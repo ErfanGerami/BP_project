@@ -1,4 +1,5 @@
 ﻿  BP_Project.cpp
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(116): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(569): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(120): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(675): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(793): warning C4129: '/': unrecognized character escape sequence
   BP_Project.vcxproj -> C:\Users\Geramizade\source\repos\BP_Project\Debug\BP_Project.exe

@@ -1,5 +1,4 @@
 #define  _CRT_SECURE_NO_WARNINGS
-#pragma comment (lib , "winmm.lib")
 
 #include <stdlib.h>
 #include <math.h>
@@ -90,6 +89,7 @@ int Color;
 int OptionCnt;
 HANDLE BlinkThread;
 HANDLE MusicPlayer;
+Player player;
 //Function Prototyeps--------------------------------------------------------------------
 
 void my_callback_on_key_arrival(char c);
@@ -111,6 +111,10 @@ void RegisterMenu();
 void StatusMenu();
 void HashPass(char* pass);
 void welcome();
+void SignInMenu();
+void SignInEval();
+
+
 
 int main(void) {
 	srand(time(NULL));
@@ -118,7 +122,7 @@ int main(void) {
 
 	//MusicPlayer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Music, NULL, 0, NULL);
 
-	//welcome();
+	welcome();
 	Busy = 0;
 	CurserPos[0] = 0;
 	CurserPos[1] = 0;
@@ -220,6 +224,8 @@ void my_callback_on_key_arrival(char c) {
 				else if (AllInMenu[Selected].thing.option.text[0] == 'E') {
 					system("cls");
 					exit(0);
+				}else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+					SignInMenu();
 				}
 			}
 			else if (CurrentState == Register) {
@@ -227,6 +233,13 @@ void my_callback_on_key_arrival(char c) {
 					MainMenu();
 				}else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
 					RegisterEval();
+				}
+			}else if (CurrentState == SignIn) {
+				if (AllInMenu[Selected].thing.option.text[0] == 'B') {
+					MainMenu();
+				}
+				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+					SignInEval();
 				}
 			}
 		}
@@ -248,13 +261,13 @@ void RegisterEval() {
 	char NickName[20];
 	char password[20];
 	char FileName[45];
-	int age = atoi(AllInMenu[2].thing.entry.input);
+	
 	FileName[0] = '\0';
 	
 	strcpy(name, AllInMenu[0].thing.entry.input);
 	strcpy(LastName, AllInMenu[1].thing.entry.input);
 	strcpy(NickName, AllInMenu[2].thing.entry.input);
-	//age= (NickName, AllInMenu[2].thing.entry.input
+	int age = atoi(AllInMenu[3].thing.entry.input);
 	strcpy(password, AllInMenu[4].thing.entry.input);
 	strcat(FileName, "Users/");
 	strcat(FileName,name);
@@ -274,8 +287,7 @@ void RegisterEval() {
 		return;
 	}
 	
-	Player player;
-	player.age = -1;
+	
 	strcpy(player.name, name);
 	strcpy(player.LastName, LastName);
 	strcpy(player.NickName, NickName);
@@ -283,8 +295,8 @@ void RegisterEval() {
 	player.PrevGames[0].BeenPlayed = 0;
 	player.PrevGames[1].BeenPlayed = 0;
 	player.PrevGames[2].BeenPlayed = 0;
+	player.age = age;
 
-	strcpy(player.name, name);
 	HashPass(player.password);
 	file= fopen(FileName, "w");
 	printf(player.password);
@@ -295,6 +307,39 @@ void RegisterEval() {
 	
 
 }
+void SignInEval() {
+	char name[42];
+	char LastName[20];
+	char password[20];
+	char FileName[45];
+
+	FileName[0] = '\0';
+
+	strcpy(name, AllInMenu[0].thing.entry.input);
+	strcpy(LastName, AllInMenu[1].thing.entry.input);
+	strcpy(password, AllInMenu[2].thing.entry.input);
+	HashPass(password);
+	strcat(FileName, "Users/");
+	strcat(FileName, name);
+	strcat(FileName, " ");
+	strcat(FileName, LastName);
+	strcat(FileName, ".bin");
+	FILE* file = fopen(FileName, "r");
+	if (file == NULL) {
+		Log("No Such User(Or Access Denied)\a", RED);
+		return;
+	}
+
+	fread(&player, sizeof(Player), 1, file);
+
+	if (strcmp(player.password, password) != 0) {
+		Log("Password Is Not Correct\a", RED);
+	}
+	StatusMenu();
+}
+
+
+
 void DeleteSquare(int width, int  height, int StartX, int StartY) {
 
 	gotoxy(StartX, StartY);
@@ -548,7 +593,6 @@ void RegisterMenu(){
 
 	Busy = 1;
 	ClearTerminal();
-	PrintMainMenu();
 	PrintRegisterMenu();
 	PrintOptionOrEntry(AllInMenu[0], GREEN);
 	for (int i = 1; i < OptionCnt; i++) {
@@ -562,23 +606,82 @@ void RegisterMenu(){
 	Busy = 0;
 }
 void StatusMenu(){}
+void SignInMenu(){
+	CurrentState = SignIn;
+	OptionCnt = 5;
+	Selected = 0;
+	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
+
+	AllInMenu[0].OptionOrEntry = 1;
+	AllInMenu[0].thing.entry.IsSelected = 1;
+	AllInMenu[0].thing.entry.text = "name";
+	AllInMenu[0].thing.entry.Pos[0] = 5; AllInMenu[0];	AllInMenu[0].thing.entry.Pos[1] = 6;
+	AllInMenu[0].thing.entry.Cnt = 0;
+	AllInMenu[0].thing.entry.input[0] = '\0';
+	AllInMenu[0].thing.entry.max = MAX;
+
+
+	AllInMenu[1].OptionOrEntry = 1;
+	AllInMenu[1].thing.entry.IsSelected = 0;
+	AllInMenu[1].thing.entry.text = "last name";
+	AllInMenu[1].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[1].thing.entry.Pos[1] = 9;
+	AllInMenu[1].thing.entry.Cnt = 0;
+	AllInMenu[1].thing.entry.Cnt = 0;
+	AllInMenu[1].thing.entry.input[0] = '\0';
+	AllInMenu[1].thing.entry.max = MAX;
+
+
+	AllInMenu[2].OptionOrEntry = 1;
+	AllInMenu[2].thing.entry.IsSelected = 0;
+	AllInMenu[2].thing.entry.text = "password";
+	AllInMenu[2].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[2].thing.entry.Pos[1] = 12;
+	AllInMenu[2].thing.entry.Cnt = 0;
+	AllInMenu[2].thing.entry.Cnt = 0;
+	AllInMenu[2].thing.entry.input[0] = '\0';
+	AllInMenu[2].thing.entry.max = MAX;
+
+
+
+	AllInMenu[3].OptionOrEntry = 0;
+	AllInMenu[3].thing.option.IsSelected = 0;
+	AllInMenu[3].thing.option.text = "SUBMIT";
+	AllInMenu[3].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[3].thing.option.Pos[1] = 17;
+
+	AllInMenu[4].OptionOrEntry = 0;
+	AllInMenu[4].thing.option.IsSelected = 0;
+	AllInMenu[4].thing.option.text = "BACK";
+	AllInMenu[4].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[4].thing.option.Pos[1] = 20;
+
+	Busy = 1;
+	ClearTerminal();
+	PrintRegisterMenu();
+	PrintOptionOrEntry(AllInMenu[0], GREEN);
+	for (int i = 1; i < OptionCnt; i++) {
+		PrintOptionOrEntry(AllInMenu[i], BLUE);
+	}
+
+
+
+
+
+	Busy = 0;
+
+}
+
+//------------------------------------------------------------------
 void HashPass(char pass[20]) {
 	int key = 2;
 	int mode = 20;
-	gotoxy(0, 0);
 	for (int i = 0; i < strlen(pass); i++) {
 		pass[i] = ((int)pow(2, i % 3) * pass[i]) % 26+97;
 		printf("%c", pass[i]);
 
 	}
-	while (1);
 	
 	
 
 	
 }
-
-//------------------------------------------------------------------
 void PrintMainMenu() {
 
 	setcolor(WHITE);
@@ -639,6 +742,8 @@ void PrintRegisterMenu() {
 
 
 }
+
+
 void welcome() {
 	int cnt = 4;
 	setcolor(BLUE);
@@ -672,20 +777,41 @@ void welcome() {
 					//------------------------------
 		Sleep(300); gotoxy(0, 0); system("cls"); setcolor(BLUE);
 	}
-	setcolor(WHITE);
-	printf("  ###    ##  ###      ####    ##         #####     ####    ###   ###  ####       ####      \n");
-	printf(" #####   ##   ###    ######   ##        ######    ######  ##### ##### ####      #####      \n");
-	printf(" #  ###  ###  ###   ### ###   ##       ##   ##   ##   ### #  #### ##### ##     ##  ###    \n");
-	printf(" #   ##  ###  ##    ##  ###   ##       ##        ##   ###    #### ####  ##    ###  ##    \n");
-	printf("     ##  ###  ##    ##  ##    ##      ###       ###    ##    ###  ####  ##    ### ###    \n");
-	printf("     ##########    ######     ##      ###       ###    ##    ###  ###   ##    ######      \n");
-	printf("     ####  ####     ###       ##      ###       ###    ##    ##   ###   ##    ###         \n");
-	printf("      ###  ###      ###    #  ##  #   ###    ##  ##   ###    ##   ###   ##  # ###    ##    \n");
-	printf("      ###  ###      ########  ## ##    #######   ###  ##     ##   ###   #####  ### ###     \n");
-	printf("      ##   ##        #####    ####      #####     #####      ##   ###   ####    #####  \n");
+	setcolor(GREEN);
 	
+	printf("_________________________\n");
+		printf("|");setcolor(BLUE);printf("######################");setcolor(GREEN);printf("/\n");
+		printf("|");setcolor(BLUE);printf("####################");setcolor(GREEN);printf("//\n");
+		printf("|");setcolor(BLUE);printf("###################");setcolor(GREEN);printf("//\n");
+		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("| --------------\n");
 
-	printf("\n welcome to my project see th code in my github :");
+		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("|\n");
+		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("|\n");
+		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("|\n");
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("---------------     _\n");
+
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("###############"); setcolor(GREEN); printf("\/    /"); setcolor(BLUE); printf("#"); setcolor(GREEN); printf("|\n");
+
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("#############"); setcolor(GREEN); printf("|     /"); setcolor(BLUE); printf("##"); setcolor(GREEN); printf("|\n");
+
+
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("###############"); setcolor(GREEN); printf("\\  /"); setcolor(BLUE); printf("###"); setcolor(GREEN); printf("|\n");
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("--------------- "); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+
+		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("_______________ |"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|\n");
+
+		printf("|");setcolor(BLUE);printf("##########################");setcolor(GREEN);printf("| \n");
+		printf("|");setcolor(BLUE);printf("##########################");setcolor(GREEN);printf("| \n");
+		printf("|");setcolor(BLUE);printf("##########################");setcolor(GREEN); printf("| \n");
+		printf("----------------------------\n");
+
+
+
+	printf("\n welcome to my project! check out the code in my github :");
 	setcolor(GREEN);
 	printf("https://github.com/ErfanGerami");
 	setcolor(WHITE);
@@ -693,3 +819,4 @@ void welcome() {
 	while (getchar() != 10);
 												
 }
+
