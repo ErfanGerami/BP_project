@@ -29,9 +29,10 @@ const int LONGSCORE = 2;
 const int HARDSCORE = 2;
 
 #pragma endregion
+
 #pragma region structs, unions,Enums
 
-typedef enum State { Main, Register, SignIn } State;
+typedef enum State { Main, Register, SignIn,Game } State;
 typedef enum WordKind { OrdinaryWord, LongWord, HardWord, UnClearWord } WordKind;
 
 typedef struct Entry {
@@ -90,10 +91,12 @@ typedef struct Word {
 	char word[25];
 	WordKind kind;
 	Word* next;
+	int pos[2];
 	int IsItUnClear;
 }Word;
 
 #pragma endregion
+
 #pragma region public variables
 State CurrentState;
 OptionOrEntry* AllInMenu;
@@ -113,8 +116,9 @@ int NumberOfHeads;
 int WhereInOrd;
 int WhereInHard;
 int WherInLong;
-
+int wave;
 #pragma endregion
+
 #pragma region funciton prototypes
 void my_callback_on_key_arrival(char c);
 void PrintMainMenu();
@@ -176,7 +180,8 @@ int main(void) {
 	//initializing////////
 	
 
-	MainMenu();
+	//MainMenu();
+	Game();
 
 
 	HANDLE BlinkThread= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) Colorize, NULL, 0, NULL);
