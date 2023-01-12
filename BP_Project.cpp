@@ -17,17 +17,23 @@
 
 
 
-//consts-------------------------
+#pragma region consts
 const int WHITE = 15;
 const int MAX = 15;
 const int YELLOW = 6;
 const int RED = 20;
 const int GREEN = 2;
 const int BLUE = 3;
+const int ORDSCORE = 1;
+const int LONGSCORE = 2;
+const int HARDSCORE = 2;
 
-//Structs And Unions and Enums-------------------------------
+#pragma endregion
+#pragma region structs, unions,Enums
+
 typedef enum State { Main, Register, SignIn } State;
-State CurrentState;
+typedef enum WordKind { OrdinaryWord, LongWord, HardWord, UnClearWord } WordKind;
+
 typedef struct Entry {
 	const char* text;
 	char input[20];
@@ -43,7 +49,7 @@ typedef struct Option {
 	const char* text;
 	int Pos[2];
 	int IsSelected;
-	
+
 
 
 
@@ -80,7 +86,16 @@ typedef struct Plyer {
 	int age;
 }Player;
 
-//Public Variables--------------------------------------
+typedef struct Word {
+	char word[25];
+	WordKind kind;
+	Word* next;
+	int IsItUnClear;
+}Word;
+
+#pragma endregion
+#pragma region public variables
+State CurrentState;
 OptionOrEntry* AllInMenu;
 int CurserPos[2];
 int Busy;
@@ -90,13 +105,22 @@ int OptionCnt;
 HANDLE BlinkThread;
 HANDLE MusicPlayer;
 Player player;
-//Function Prototyeps--------------------------------------------------------------------
 
+Word* Heads;
+int NumberOfHeads;
+
+
+int WhereInOrd;
+int WhereInHard;
+int WherInLong;
+
+#pragma endregion
+#pragma region funciton prototypes
 void my_callback_on_key_arrival(char c);
 void PrintMainMenu();
 void PrintRegisterMenu();
 void PrintOptionOrEntry(OptionOrEntry opORen, int color);
-void Log(const char* text , int color);
+void Log(const char* text, int color);
 void PrintSquare(int width, int  height, int StartX, int StartY, int Color);
 void DeleteSquare(int width, int  height, int StartX, int StartY);
 void ChangeOption(int to);
@@ -105,19 +129,39 @@ DWORD WINAPI Colorize();
 DWORD WINAPI Music();
 void Fill(char c);
 void RegisterEval();
+void FillFiles();
 //Menu Functions-------------
 void MainMenu();
 void RegisterMenu();
 void StatusMenu();
-void HashPass(char* pass);
+void HashPass(char pass[20]);
 void welcome();
 void SignInMenu();
 void SignInEval();
+WordKind GenerateUnclear(char word[25]);
+
+void CreatNewLinkedList(int ord, int Long, int hard, int Unclear);
+
+#pragma endregion
 
 
 
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 int main(void) {
+	//initilizinfg public varaibkes-------------
+	NumberOfHeads = 0;
+	WhereInOrd=0;
+	WhereInHard=0;
+	WherInLong=0;
+	//------------------------------------------
+
 	srand(time(NULL));
+
+	FillFiles();
+	CreatNewLinkedList(2, 2, 2, 2);
 	//Remember To Uncomment;
 
 	//MusicPlayer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Music, NULL, 0, NULL);
@@ -142,26 +186,29 @@ int main(void) {
 
 	return 0;
 }
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 
 
 
+#pragma region thread functions
 
-
-//---------------------------------------------------------------------------------------------
 DWORD WINAPI Music() {
 	while (1) {
 		Play();
 	}
 }
 DWORD WINAPI Colorize() {
-	int prevSelected=Selected;
+	int prevSelected = Selected;
 	Option CurrentOption;
 	while (1) {
 		Sleep(400);
 		while (Busy);
 		Busy = 1;
-		
-		
+
+
 
 		if (AllInMenu[Selected].OptionOrEntry == 0) {
 			CurrentOption = AllInMenu[Selected].thing.option;
@@ -174,7 +221,7 @@ DWORD WINAPI Colorize() {
 		Busy = 0;
 		Sleep(400);
 		Busy = 1;
-		
+
 		if (AllInMenu[Selected].OptionOrEntry == 0) {
 			CurrentOption = AllInMenu[Selected].thing.option;
 			gotoxy(CurrentOption.Pos[0], CurrentOption.Pos[1]);
@@ -185,6 +232,64 @@ DWORD WINAPI Colorize() {
 		}
 		Busy = 0;
 	}
+}
+void my_callback_on_key_arrival(char c) {
+	while (Busy);
+	Busy = 1;
+	if (c == 17) {
+		TerminateThread(MusicPlayer, 0);
+	}
+	else if (c == 72) {
+		ChangeOption(-1);
+	}
+	else if (c == 80) {
+		ChangeOption(1);
+	}
+
+	else if (c == 13) {
+		if (AllInMenu[Selected].OptionOrEntry == 1) {
+			ChangeOption(1);
+		}
+		else {
+			if (CurrentState == Main) {
+				if (AllInMenu[Selected].thing.option.text[0] == 'R') {
+					RegisterMenu();
+				}
+				else if (AllInMenu[Selected].thing.option.text[0] == 'E') {
+					system("cls");
+					exit(0);
+				}
+				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+					SignInMenu();
+				}
+			}
+			else if (CurrentState == Register) {
+				if (AllInMenu[Selected].thing.option.text[0] == 'B') {
+					MainMenu();
+				}
+				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+					RegisterEval();
+				}
+			}
+			else if (CurrentState == SignIn) {
+				if (AllInMenu[Selected].thing.option.text[0] == 'B') {
+					MainMenu();
+				}
+				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+					SignInEval();
+				}
+			}
+		}
+	}
+	else if (AllInMenu[Selected].OptionOrEntry == 1 && c != -32) {
+		if (c == 32) {
+			Log("No Spaces", RED);
+			return;
+		}
+		Fill(c);
+
+	}
+	Busy = 0;
 }
 void ClearTerminal() {
 	gotoxy(0, 0);
@@ -200,94 +305,43 @@ void ClearTerminal() {
 	gotoxy(CurserPos[0], CurserPos[1]);
 
 }
-void my_callback_on_key_arrival(char c) {
-	while (Busy);
-	Busy = 1;
-	if (c == 17) {
-		TerminateThread(MusicPlayer, 0);
-	}else if (c == 72) {
-		ChangeOption(-1);
-	}
-	else if (c == 80) {
-		ChangeOption(1);
-	}
-	
-	else if (c == 13) {
-		if (AllInMenu[Selected].OptionOrEntry == 1) {
-			ChangeOption(1);
-		}
-		else {
-			if (CurrentState == Main) {
-				if (AllInMenu[Selected].thing.option.text[0] == 'R') {
-					RegisterMenu();
-				}
-				else if (AllInMenu[Selected].thing.option.text[0] == 'E') {
-					system("cls");
-					exit(0);
-				}else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
-					SignInMenu();
-				}
-			}
-			else if (CurrentState == Register) {
-				if (AllInMenu[Selected].thing.option.text[0] == 'B') {
-					MainMenu();
-				}else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
-					RegisterEval();
-				}
-			}else if (CurrentState == SignIn) {
-				if (AllInMenu[Selected].thing.option.text[0] == 'B') {
-					MainMenu();
-				}
-				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
-					SignInEval();
-				}
-			}
-		}
-	}
-	else if(AllInMenu[Selected].OptionOrEntry==1&&c!=-32) {
-		if (c == 32) {
-			Log("No Spaces",RED);
-			return;
-		}
-		Fill(c);
+#pragma endregion
 
-	}
-	Busy = 0;
-}
-///--------------------------------------------------------------------------------------------
+#pragma region register function
+
 void RegisterEval() {
 	char name[42];
 	char LastName[20];
 	char NickName[20];
 	char password[20];
 	char FileName[45];
-	
+
 	FileName[0] = '\0';
-	
+
 	strcpy(name, AllInMenu[0].thing.entry.input);
 	strcpy(LastName, AllInMenu[1].thing.entry.input);
 	strcpy(NickName, AllInMenu[2].thing.entry.input);
 	int age = atoi(AllInMenu[3].thing.entry.input);
 	strcpy(password, AllInMenu[4].thing.entry.input);
 	strcat(FileName, "Users/");
-	strcat(FileName,name);
+	strcat(FileName, name);
 	strcat(FileName, " ");
 	strcat(FileName, LastName);
 	strcat(FileName, ".bin");
 	if (name[0] == '\0' || password[0] == '\0' || LastName[0] == '\0' || NickName[0] == '\0') {
-		Log("Only Age Field Can Be Empty\a",RED);
+		Log("Only Age Field Can Be Empty\a", RED);
 		return;
 	}
 
 
 
-	FILE* file = fopen(FileName, "r");
+	FILE* file = fopen(FileName, "rb");
 	if (file != NULL) {
-		Log("You've Registered before\a",RED);
+		Log("You've Registered before\a", RED);
 		return;
 	}
-	
-	
+
+
 	strcpy(player.name, name);
 	strcpy(player.LastName, LastName);
 	strcpy(player.NickName, NickName);
@@ -298,13 +352,13 @@ void RegisterEval() {
 	player.age = age;
 
 	HashPass(player.password);
-	file= fopen(FileName, "w");
+	file = fopen(FileName, "wb");
 	printf(player.password);
 	fwrite(&player, sizeof(Player), 1, file);
 	fclose(file);
 	StatusMenu();
 
-	
+
 
 }
 void SignInEval() {
@@ -324,7 +378,7 @@ void SignInEval() {
 	strcat(FileName, " ");
 	strcat(FileName, LastName);
 	strcat(FileName, ".bin");
-	FILE* file = fopen(FileName, "r");
+	FILE* file = fopen(FileName, "rb");
 	if (file == NULL) {
 		Log("No Such User(Or Access Denied)\a", RED);
 		return;
@@ -338,7 +392,9 @@ void SignInEval() {
 	StatusMenu();
 }
 
+#pragma endregion
 
+#pragma region printing functions
 
 void DeleteSquare(int width, int  height, int StartX, int StartY) {
 
@@ -409,6 +465,465 @@ void PrintOptionOrEntry(OptionOrEntry opORen,int color) {
 	}
 	gotoxy(CurserPos[0], CurserPos[1]);
 	setcolor(Color);
+}
+void PrintMainMenu() {
+
+	setcolor(WHITE);
+	printf("____________________________________________  \n");
+	printf("||   logs:                                ||  \n");
+	printf("||                                        ||  \n");
+	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
+	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||Press CTRL+q to stop music              ||  \n");
+	printf("--------------------------------------------  \n");
+	gotoxy(CurserPos[0], CurserPos[1]);
+
+
+}
+void PrintRegisterMenu() {
+
+	setcolor(WHITE);
+	printf("____________________________________________  \n");
+	printf("||   logs:                                ||  \n");
+	printf("||                                        ||  \n");
+	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
+	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("--------------------------------------------  \n");
+	gotoxy(CurserPos[0], CurserPos[1]);
+
+
+}
+void welcome() {
+	int cnt = 4;
+	setcolor(BLUE);
+	while (cnt--) {
+
+
+		printf("  ###    ##  ###      ####    ##         #####     ####    ###   ###  ####       ####      \n");
+		printf(" #####   ##   ###    ######   ##        ######    ######  ##### ##### ####      #####      \n");
+		printf(" #  ###  ###  ###   ### ###   ##       ##   ##   ##   ### #  #### ##### ##     ##  ###    \n");
+		printf(" #   ##  ###  ##    ##  ###   ##       ##        ##   ###    #### ####  ##    ###  ##    \n");
+		printf("     ##  ###  ##    ##  ##    ##      ###       ###    ##    ###  ####  ##    ### ###    \n");
+		printf("     ##########    ######     ##      ###       ###    ##    ###  ###   ##    ######      \n");
+		printf("     ####  ####     ###       ##      ###       ###    ##    ##   ###   ##    ###         \n");
+		printf("      ###  ###      ###    #  ##  #   ###    ##  ##   ###    ##   ###   ##  # ###    ##    \n");
+		printf("      ###  ###      ########  ## ##    #######   ###  ##     ##   ###   #####  ### ###     \n");
+		printf("      ##   ##        #####    ####      #####     #####      ##   ###   ####    #####  \n");
+		//------------------------------
+		Sleep(300); gotoxy(0, 0); system("cls"); setcolor(GREEN);
+
+
+
+		printf("                      ##\n");
+		printf(" ###   #   ##   ####  ##      ####    ####  ### ### ####    ####\n");
+		printf(" # ##  ##  ##  ## ##  ##     ##  #   ##  #### # # ### ##   ## ##\n");
+		printf("    #  ##  #   ## ##  ##     ##      #   ###  ##  ### ##   ## ##\n");
+		printf("    ########   ####   ##     ##     ##   ##   ##  ##  ##   ####\n");
+		printf("    ### ###    ##     ##  #  ##     ##   ##   ##  ##  ##   ##\n");
+		printf("    ### ###    ##   # ## ##  ##   #  ##  #    ##  ##  ## # ##   #\n");
+		printf("     #   #      ####   ###    ####   #####    ##  ##  ###   #### \n");
+		//------------------------------
+					//------------------------------
+		Sleep(300); gotoxy(0, 0); system("cls"); setcolor(BLUE);
+	}
+	setcolor(GREEN);
+
+	printf("_________________________\n");
+	printf("|"); setcolor(BLUE); printf("######################"); setcolor(GREEN); printf("/\n");
+	printf("|"); setcolor(BLUE); printf("####################"); setcolor(GREEN); printf("//\n");
+	printf("|"); setcolor(BLUE); printf("###################"); setcolor(GREEN); printf("//\n");
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| --------------\n");
+
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|\n");
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|\n");
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|\n");
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("---------------     _\n");
+
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("###############"); setcolor(GREEN); printf("\/    /"); setcolor(BLUE); printf("#"); setcolor(GREEN); printf("|\n");
+
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("#############"); setcolor(GREEN); printf("|     /"); setcolor(BLUE); printf("##"); setcolor(GREEN); printf("|\n");
+
+
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("###############"); setcolor(GREEN); printf("\\  /"); setcolor(BLUE); printf("###"); setcolor(GREEN); printf("|\n");
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("--------------- "); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
+
+	printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("_______________ |"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|\n");
+
+	printf("|"); setcolor(BLUE); printf("##########################"); setcolor(GREEN); printf("| \n");
+	printf("|"); setcolor(BLUE); printf("##########################"); setcolor(GREEN); printf("| \n");
+	printf("|"); setcolor(BLUE); printf("##########################"); setcolor(GREEN); printf("| \n");
+	printf("----------------------------\n");
+
+
+
+	printf("\n welcome to my project! check out the code in my github :");
+	setcolor(GREEN);
+	printf("https://github.com/ErfanGerami");
+	setcolor(WHITE);
+	printf(" \n\n \n___________________________________PRESS ENTER KEY TO CONTINUE____________________________________");
+	while (getchar() != 10);
+
+}
+
+#pragma endregion
+
+#pragma region menu functions
+void MainMenu() {
+	CurrentState = Main;
+	OptionCnt = 3;
+	Selected = 0;
+	AllInMenu = (OptionOrEntry*)malloc(3 * sizeof(OptionOrEntry));
+	AllInMenu[0].OptionOrEntry = 0;
+	AllInMenu[0].thing.option.IsSelected = 1;
+	AllInMenu[0].thing.option.text = "REGISTER";
+	AllInMenu[0].thing.option.Pos[0] = 5; AllInMenu[0];	AllInMenu[0].thing.option.Pos[1] = 6;
+
+	AllInMenu[1].OptionOrEntry = 0;
+	AllInMenu[1].thing.option.IsSelected = 0;
+	AllInMenu[1].thing.option.text = "SIGN IN";
+	AllInMenu[1].thing.option.Pos[0] = 20; AllInMenu[1];	AllInMenu[1].thing.option.Pos[1] = 9;
+
+	AllInMenu[2].OptionOrEntry = 0;
+	AllInMenu[2].thing.option.IsSelected = 0;
+	AllInMenu[2].thing.option.text = "EXIT";
+	AllInMenu[2].thing.option.Pos[0] = 35; AllInMenu[1];	AllInMenu[2].thing.option.Pos[1] = 12;
+	Busy = 1;
+	gotoxy(0, 0);
+	ClearTerminal();
+	PrintMainMenu();
+
+
+	for (int i = 0; i < 3; i++) {
+		PrintOptionOrEntry(AllInMenu[i], 3);
+	}
+	Option CurrentOption = AllInMenu[Selected].thing.option;
+	PrintSquare(strlen(CurrentOption.text) + 2, 3, CurrentOption.Pos[0] - 1, CurrentOption.Pos[1] - 1, GREEN);
+	Busy = 0;
+
+}
+void RegisterMenu() {
+	CurrentState = Register;
+	OptionCnt = 7;
+	Selected = 0;
+	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
+	AllInMenu[0].OptionOrEntry = 1;
+	AllInMenu[0].thing.entry.IsSelected = 1;
+	AllInMenu[0].thing.entry.text = "name";
+	AllInMenu[0].thing.entry.Pos[0] = 5; AllInMenu[0];	AllInMenu[0].thing.entry.Pos[1] = 6;
+	AllInMenu[0].thing.entry.Cnt = 0;
+	AllInMenu[0].thing.entry.input[0] = '\0';
+	AllInMenu[0].thing.entry.max = MAX;
+
+
+	AllInMenu[1].OptionOrEntry = 1;
+	AllInMenu[1].thing.entry.IsSelected = 0;
+	AllInMenu[1].thing.entry.text = "last name";
+	AllInMenu[1].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[1].thing.entry.Pos[1] = 9;
+	AllInMenu[1].thing.entry.Cnt = 0;
+	AllInMenu[1].thing.entry.Cnt = 0;
+	AllInMenu[1].thing.entry.input[0] = '\0';
+	AllInMenu[1].thing.entry.max = MAX;
+
+	AllInMenu[2].OptionOrEntry = 1;
+	AllInMenu[2].thing.entry.IsSelected = 0;
+	AllInMenu[2].thing.entry.text = "nick name";
+	AllInMenu[2].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[2].thing.entry.Pos[1] = 12;
+	AllInMenu[2].thing.entry.Cnt = 0;
+	AllInMenu[2].thing.entry.Cnt = 0;
+	AllInMenu[2].thing.entry.input[0] = '\0';
+	AllInMenu[2].thing.entry.max = MAX;
+
+	AllInMenu[3].OptionOrEntry = 1;
+	AllInMenu[3].thing.entry.IsSelected = 0;
+	AllInMenu[3].thing.entry.text = "age";
+	AllInMenu[3].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[3].thing.entry.Pos[1] = 15;
+	AllInMenu[3].thing.entry.Cnt = 0;
+	AllInMenu[3].thing.entry.Cnt = 0;
+	AllInMenu[3].thing.entry.input[0] = '\0';
+	AllInMenu[3].thing.entry.max = 2;
+
+
+	AllInMenu[4].OptionOrEntry = 1;
+	AllInMenu[4].thing.entry.IsSelected = 0;
+	AllInMenu[4].thing.entry.text = "password";
+	AllInMenu[4].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[4].thing.entry.Pos[1] = 18;
+	AllInMenu[4].thing.entry.Cnt = 0;
+	AllInMenu[4].thing.entry.Cnt = 0;
+	AllInMenu[4].thing.entry.input[0] = '\0';
+	AllInMenu[4].thing.entry.max = MAX;
+
+
+
+	AllInMenu[5].OptionOrEntry = 0;
+	AllInMenu[5].thing.option.IsSelected = 0;
+	AllInMenu[5].thing.option.text = "SUBMIT";
+	AllInMenu[5].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[5].thing.option.Pos[1] = 23;
+
+
+	AllInMenu[6].OptionOrEntry = 0;
+	AllInMenu[6].thing.option.IsSelected = 0;
+	AllInMenu[6].thing.option.text = "BACK";
+	AllInMenu[6].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[6].thing.option.Pos[1] = 26;
+
+	Busy = 1;
+	ClearTerminal();
+	PrintRegisterMenu();
+	PrintOptionOrEntry(AllInMenu[0], GREEN);
+	for (int i = 1; i < OptionCnt; i++) {
+		PrintOptionOrEntry(AllInMenu[i], BLUE);
+	}
+
+
+
+
+
+	Busy = 0;
+}
+void StatusMenu() {}
+void SignInMenu() {
+	CurrentState = SignIn;
+	OptionCnt = 5;
+	Selected = 0;
+	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
+
+	AllInMenu[0].OptionOrEntry = 1;
+	AllInMenu[0].thing.entry.IsSelected = 1;
+	AllInMenu[0].thing.entry.text = "name";
+	AllInMenu[0].thing.entry.Pos[0] = 5; AllInMenu[0];	AllInMenu[0].thing.entry.Pos[1] = 6;
+	AllInMenu[0].thing.entry.Cnt = 0;
+	AllInMenu[0].thing.entry.input[0] = '\0';
+	AllInMenu[0].thing.entry.max = MAX;
+
+
+	AllInMenu[1].OptionOrEntry = 1;
+	AllInMenu[1].thing.entry.IsSelected = 0;
+	AllInMenu[1].thing.entry.text = "last name";
+	AllInMenu[1].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[1].thing.entry.Pos[1] = 9;
+	AllInMenu[1].thing.entry.Cnt = 0;
+	AllInMenu[1].thing.entry.Cnt = 0;
+	AllInMenu[1].thing.entry.input[0] = '\0';
+	AllInMenu[1].thing.entry.max = MAX;
+
+
+	AllInMenu[2].OptionOrEntry = 1;
+	AllInMenu[2].thing.entry.IsSelected = 0;
+	AllInMenu[2].thing.entry.text = "password";
+	AllInMenu[2].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[2].thing.entry.Pos[1] = 12;
+	AllInMenu[2].thing.entry.Cnt = 0;
+	AllInMenu[2].thing.entry.Cnt = 0;
+	AllInMenu[2].thing.entry.input[0] = '\0';
+	AllInMenu[2].thing.entry.max = MAX;
+
+
+
+	AllInMenu[3].OptionOrEntry = 0;
+	AllInMenu[3].thing.option.IsSelected = 0;
+	AllInMenu[3].thing.option.text = "SUBMIT";
+	AllInMenu[3].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[3].thing.option.Pos[1] = 17;
+
+	AllInMenu[4].OptionOrEntry = 0;
+	AllInMenu[4].thing.option.IsSelected = 0;
+	AllInMenu[4].thing.option.text = "BACK";
+	AllInMenu[4].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[4].thing.option.Pos[1] = 20;
+
+	Busy = 1;
+	ClearTerminal();
+	PrintRegisterMenu();
+	PrintOptionOrEntry(AllInMenu[0], GREEN);
+	for (int i = 1; i < OptionCnt; i++) {
+		PrintOptionOrEntry(AllInMenu[i], BLUE);
+	}
+
+
+
+
+
+	Busy = 0;
+
+}
+#pragma endregion
+
+WordKind  GenerateUnclear(char word[25]) {
+	//ordinary---------------------------------------------
+	char OrdinaryPermited[70];
+	char SpecialCharacters[] = { '_','-','@','$','%','^','&','!' };
+	const int SpecialCharactersSize=8;
+
+	int OrdCnt = 0;
+	for (int i = 48; i <= 57; i++) {
+		OrdinaryPermited[OrdCnt] = i;
+		OrdCnt++;
+	}
+	for (int i = 65; i <= 90; i++) {
+		OrdinaryPermited[OrdCnt] = i;
+		OrdCnt++;
+	}
+	for (int i = 97; i <= 122; i++) {
+		OrdinaryPermited[OrdCnt] = i;
+		OrdCnt++;
+	}//hard------------------------------
+	int randomNum = rand() % 3;
+	//Ordinary-------------------------------------------------------
+
+	if (randomNum == 0) {
+		int lenght;
+
+		lenght = rand() % 10;
+		lenght = min((lenght + 3), 10);
+		// because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdinaryPermited[rand() % OrdCnt];
+		}
+		word[lenght] = '\0';
+		return OrdinaryWord;
+	}
+	//Long -------------------------------------------------------------
+	if (randomNum == 1) {
+		int lenght;
+
+		lenght = rand() % 20;
+		lenght = min((lenght + 3), 20);
+		// because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdinaryPermited[rand() % OrdCnt];
+		}
+		word[lenght] = '\0';
+		return LongWord;
+
+	}
+	//Hard------------------------------------------------------------------
+	if (randomNum == 2) {
+		int lenght;
+		lenght = rand() % 20;
+		lenght = min((lenght + 3), 20);
+		// because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdinaryPermited[rand() % OrdCnt];
+		}
+		//we at least want 1 Special character and we dont want to make it so hard so max 4 characters would be fine
+		int HowManySpecialCheraracters = rand() %min(lenght/2,4) +1;
+		//it culd overwrite on the previous choice but its okay
+		for (int i = 0; i < HowManySpecialCheraracters; i++) {
+			word[rand() % lenght] = SpecialCharacters[rand() % SpecialCharactersSize];
+
+		}
+		word[lenght] = '\0';
+		return HardWord;
+	}
+
+}
+void CreatNewLinkedList(int ord, int Long, int hard, int Unclear) {
+	char Chert[25];
+
+
+
+	Heads = (Word*)realloc(Heads, (NumberOfHeads + 1) * sizeof(Word));
+	NumberOfHeads++;
+	Word * TempHead = Heads + NumberOfHeads - 1;
+	//Opening FIles====================================================================
+	FILE * fileOrd = fopen("ord.txt", "r");
+	for (int i = 0; i < WhereInOrd; i++) {
+		//OrdWords[0] is just for going through the file not that we need it;
+		fgets(Chert, 1000, fileOrd);
+	}
+
+	FILE* fileLong = fopen("long.txt", "r");
+	for (int i = 0; i < WherInLong; i++) {
+		//OrdWords[0] is just for going through the file not that we need it;
+		fgets(Chert, 1000, fileLong);
+	}
+
+	FILE* fileHard = fopen("ord.txt", "r");
+	for (int i = 0; i < WhereInHard; i++) {
+		//OrdWords[0] is just for going through the file not that we need it;
+		fgets(Chert, 1000, fileHard);
+	}
+	//=====================================================================================
+
+
+
+	for (int i = 0; i < ord; i++) {
+		fgets(Chert, 1000, fileOrd);
+		TempHead->kind = OrdinaryWord;
+		strcpy(TempHead->word, Chert);
+		TempHead->IsItUnClear = 0;
+		TempHead->next = (Word*)malloc(sizeof(Word));
+		TempHead = TempHead->next;
+	}
+	for (int i = 0; i < Long; i++) {
+		fgets(Chert, 1000, fileLong);
+		TempHead->kind = HardWord;
+		strcpy(TempHead->word, Chert);
+		TempHead->IsItUnClear = 0;
+		TempHead->next = (Word*)malloc(sizeof(Word));
+		TempHead = TempHead->next;
+	}
+	for (int i = 0; i < hard; i++) {
+		fgets(Chert, 1000, fileHard);
+		TempHead->kind = LongWord;
+		strcpy(TempHead->word, Chert);
+		TempHead->IsItUnClear = 0;
+		TempHead->next = (Word*)malloc(sizeof(Word));
+		TempHead = TempHead->next;
+	}
+	for (int i = 0; i < Unclear; i++) {
+		fgets(Chert, 1000, fileHard);
+		TempHead->kind = GenerateUnclear(Chert);
+		strcpy(TempHead->word, Chert);
+		TempHead->IsItUnClear = 1;
+		if (i != Unclear - 1) {
+			TempHead->next = (Word*)malloc(sizeof(Word));
+			TempHead = TempHead->next;
+		}
+		else {
+
+		}
+	}
+
+
+	fclose(fileHard);
+	fclose(fileOrd);
+	fclose(fileLong);
+
+
+
 }
 void ChangeOption(int to) {
 	if (Selected == 0 && to == -1) {
@@ -493,182 +1008,76 @@ void Fill(char c) {
 	}
 
 }
-//Menu Functions-----------------------------------------
-void MainMenu() {
-	CurrentState = Main;
-	OptionCnt = 3;
-	Selected = 0;
-	AllInMenu = (OptionOrEntry*)malloc(3 * sizeof(OptionOrEntry));
-	AllInMenu[0].OptionOrEntry = 0;
-	AllInMenu[0].thing.option.IsSelected = 1;
-	AllInMenu[0].thing.option.text = "REGISTER";
-	AllInMenu[0].thing.option.Pos[0] = 5; AllInMenu[0];	AllInMenu[0].thing.option.Pos[1] = 6; 
-
-	AllInMenu[1].OptionOrEntry = 0;
-	AllInMenu[1].thing.option.IsSelected = 0;
-	AllInMenu[1].thing.option.text = "SIGN IN";
-	AllInMenu[1].thing.option.Pos[0] = 20; AllInMenu[1];	AllInMenu[1].thing.option.Pos[1] = 9;
-
-	AllInMenu[2].OptionOrEntry = 0;
-	AllInMenu[2].thing.option.IsSelected = 0;
-	AllInMenu[2].thing.option.text = "EXIT";
-	AllInMenu[2].thing.option.Pos[0] = 35; AllInMenu[1];	AllInMenu[2].thing.option.Pos[1] = 12;
-	Busy = 1;
-	gotoxy(0, 0);
-	ClearTerminal();
-	PrintMainMenu();
-	
-	
-	for (int i = 0; i < 3; i++) {
-		PrintOptionOrEntry(AllInMenu[i],3);
+void FillFiles() {
+	//ordinary---------------------------------------------
+	int OrdinaryPermited[70];
+	int OrdCnt = 0;
+	char SpecialCharacters[] = { '_','-','@','$','%','^','&','!' };
+	const int SpecialCharactersSize = 8;
+	for (int i = 48; i <= 57; i++) {
+		OrdinaryPermited[OrdCnt] = i;
+		OrdCnt++;
 	}
-	Option CurrentOption = AllInMenu[Selected].thing.option;
-	PrintSquare(strlen(CurrentOption.text) + 2, 3, CurrentOption.Pos[0] - 1, CurrentOption.Pos[1] - 1, GREEN);
-	Busy = 0;
-
-}
-void RegisterMenu(){
-	CurrentState = Register;
-	OptionCnt = 7;
-	Selected = 0;
-	AllInMenu = (OptionOrEntry*)realloc(AllInMenu,OptionCnt * sizeof(OptionOrEntry));
-	AllInMenu[0].OptionOrEntry = 1;
-	AllInMenu[0].thing.entry.IsSelected = 1;
-	AllInMenu[0].thing.entry.text = "name";
-	AllInMenu[0].thing.entry.Pos[0] = 5; AllInMenu[0];	AllInMenu[0].thing.entry.Pos[1] = 6;
-	AllInMenu[0].thing.entry.Cnt = 0;
-	AllInMenu[0].thing.entry.input[0] = '\0';
-	AllInMenu[0].thing.entry.max = MAX;
-
-
-	AllInMenu[1].OptionOrEntry = 1;
-	AllInMenu[1].thing.entry.IsSelected = 0;
-	AllInMenu[1].thing.entry.text = "last name";
-	AllInMenu[1].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[1].thing.entry.Pos[1] = 9;
-	AllInMenu[1].thing.entry.Cnt = 0;
-	AllInMenu[1].thing.entry.Cnt = 0;
-	AllInMenu[1].thing.entry.input[0] = '\0';
-	AllInMenu[1].thing.entry.max = MAX;
-
-	AllInMenu[2].OptionOrEntry = 1;
-	AllInMenu[2].thing.entry.IsSelected = 0;
-	AllInMenu[2].thing.entry.text = "nick name";
-	AllInMenu[2].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[2].thing.entry.Pos[1] = 12;
-	AllInMenu[2].thing.entry.Cnt = 0;
-	AllInMenu[2].thing.entry.Cnt = 0;
-	AllInMenu[2].thing.entry.input[0] = '\0';
-	AllInMenu[2].thing.entry.max = MAX;
-
-	AllInMenu[3].OptionOrEntry = 1;
-	AllInMenu[3].thing.entry.IsSelected = 0;
-	AllInMenu[3].thing.entry.text = "age";
-	AllInMenu[3].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[3].thing.entry.Pos[1] = 15;
-	AllInMenu[3].thing.entry.Cnt = 0;
-	AllInMenu[3].thing.entry.Cnt = 0;
-	AllInMenu[3].thing.entry.input[0] = '\0';
-	AllInMenu[3].thing.entry.max = 2;
-
-
-	AllInMenu[4].OptionOrEntry = 1;
-	AllInMenu[4].thing.entry.IsSelected = 0;
-	AllInMenu[4].thing.entry.text = "password";
-	AllInMenu[4].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[4].thing.entry.Pos[1] = 18;
-	AllInMenu[4].thing.entry.Cnt = 0;
-	AllInMenu[4].thing.entry.Cnt = 0;
-	AllInMenu[4].thing.entry.input[0] = '\0';
-	AllInMenu[4].thing.entry.max = MAX;
-
-
-
-	AllInMenu[5].OptionOrEntry = 0;
-	AllInMenu[5].thing.option.IsSelected = 0;
-	AllInMenu[5].thing.option.text = "SUBMIT";
-	AllInMenu[5].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[5].thing.option.Pos[1] = 23;
-
-
-	AllInMenu[6].OptionOrEntry = 0;
-	AllInMenu[6].thing.option.IsSelected = 0;
-	AllInMenu[6].thing.option.text = "BACK";
-	AllInMenu[6].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[6].thing.option.Pos[1] = 26;
-
-	Busy = 1;
-	ClearTerminal();
-	PrintRegisterMenu();
-	PrintOptionOrEntry(AllInMenu[0], GREEN);
-	for (int i = 1; i < OptionCnt; i++) {
-		PrintOptionOrEntry(AllInMenu[i], BLUE);
+	for (int i = 65; i <= 90; i++) {
+		OrdinaryPermited[OrdCnt] = i;
+		OrdCnt++;
 	}
-	
-	
-	
-
-	
-	Busy = 0;
-}
-void StatusMenu(){}
-void SignInMenu(){
-	CurrentState = SignIn;
-	OptionCnt = 5;
-	Selected = 0;
-	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
-
-	AllInMenu[0].OptionOrEntry = 1;
-	AllInMenu[0].thing.entry.IsSelected = 1;
-	AllInMenu[0].thing.entry.text = "name";
-	AllInMenu[0].thing.entry.Pos[0] = 5; AllInMenu[0];	AllInMenu[0].thing.entry.Pos[1] = 6;
-	AllInMenu[0].thing.entry.Cnt = 0;
-	AllInMenu[0].thing.entry.input[0] = '\0';
-	AllInMenu[0].thing.entry.max = MAX;
-
-
-	AllInMenu[1].OptionOrEntry = 1;
-	AllInMenu[1].thing.entry.IsSelected = 0;
-	AllInMenu[1].thing.entry.text = "last name";
-	AllInMenu[1].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[1].thing.entry.Pos[1] = 9;
-	AllInMenu[1].thing.entry.Cnt = 0;
-	AllInMenu[1].thing.entry.Cnt = 0;
-	AllInMenu[1].thing.entry.input[0] = '\0';
-	AllInMenu[1].thing.entry.max = MAX;
-
-
-	AllInMenu[2].OptionOrEntry = 1;
-	AllInMenu[2].thing.entry.IsSelected = 0;
-	AllInMenu[2].thing.entry.text = "password";
-	AllInMenu[2].thing.entry.Pos[0] = 5; AllInMenu[1];	AllInMenu[2].thing.entry.Pos[1] = 12;
-	AllInMenu[2].thing.entry.Cnt = 0;
-	AllInMenu[2].thing.entry.Cnt = 0;
-	AllInMenu[2].thing.entry.input[0] = '\0';
-	AllInMenu[2].thing.entry.max = MAX;
-
-
-
-	AllInMenu[3].OptionOrEntry = 0;
-	AllInMenu[3].thing.option.IsSelected = 0;
-	AllInMenu[3].thing.option.text = "SUBMIT";
-	AllInMenu[3].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[3].thing.option.Pos[1] = 17;
-
-	AllInMenu[4].OptionOrEntry = 0;
-	AllInMenu[4].thing.option.IsSelected = 0;
-	AllInMenu[4].thing.option.text = "BACK";
-	AllInMenu[4].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[4].thing.option.Pos[1] = 20;
-
-	Busy = 1;
-	ClearTerminal();
-	PrintRegisterMenu();
-	PrintOptionOrEntry(AllInMenu[0], GREEN);
-	for (int i = 1; i < OptionCnt; i++) {
-		PrintOptionOrEntry(AllInMenu[i], BLUE);
+	for (int i = 97; i <= 122; i++) {
+		OrdinaryPermited[OrdCnt] = i;
+		OrdCnt++;
 	}
+	//filling files----------------------------------------------------
+	FILE* file = fopen("ord.txt", "w");
+	int lenght;
+	char word[26];
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10 ;
+		lenght = min((lenght + 3), 10);
+		// because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j ] = OrdinaryPermited[rand() % OrdCnt];
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word,"\n"), file);
+	}
+	fclose(file);
+	//long-----------------------------------
+	file = fopen("long.txt", "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10 + 11;//can take 11 to 20 length
+		lenght = min((lenght + 3), 20);
+		//j=3 because we dont want our word to have less than 3 letters;
+		for (int j=0 ; j < lenght; j++) {
+			word[j ] = OrdinaryPermited[rand() % OrdCnt];
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
+	//hard----------------------
 
+	file = fopen("hard.txt", "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 20 + 1;
+		lenght = min((lenght + 3), 20);
+		//j=3 because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j ] = OrdinaryPermited[rand() % OrdCnt];
+		}
+		int HowManySpecialCheraracters = rand() % min(lenght / 2, 4) + 1;
+		//it culd overwrite on the previous choice but its okay
+		for (int i = 0; i < HowManySpecialCheraracters; i++) {
+			word[rand() % lenght] = SpecialCharacters[rand() % SpecialCharactersSize];
 
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
 
-
-
-	Busy = 0;
 
 }
 
-//------------------------------------------------------------------
 void HashPass(char pass[20]) {
 	int key = 2;
 	int mode = 20;
@@ -681,142 +1090,5 @@ void HashPass(char pass[20]) {
 	
 
 	
-}
-void PrintMainMenu() {
-
-	setcolor(WHITE);
-	printf("____________________________________________  \n");
-	printf("||   logs:                                ||  \n");
-	printf("||                                        ||  \n");
-	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
-	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||Press CTRL+q to stop music              ||  \n");
-	printf("--------------------------------------------  \n");
-	gotoxy(CurserPos[0], CurserPos[1]);
-
-
-}
-void PrintRegisterMenu() {
-
-	setcolor(WHITE);
-	printf("____________________________________________  \n");
-	printf("||   logs:                                ||  \n");
-	printf("||                                        ||  \n");
-	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
-	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("--------------------------------------------  \n");
-	gotoxy(CurserPos[0], CurserPos[1]);
-
-
-}
-
-
-void welcome() {
-	int cnt = 4;
-	setcolor(BLUE);
-	while (cnt--) {
-		
-
-		printf("  ###    ##  ###      ####    ##         #####     ####    ###   ###  ####       ####      \n");
-		printf(" #####   ##   ###    ######   ##        ######    ######  ##### ##### ####      #####      \n");
-		printf(" #  ###  ###  ###   ### ###   ##       ##   ##   ##   ### #  #### ##### ##     ##  ###    \n");
-		printf(" #   ##  ###  ##    ##  ###   ##       ##        ##   ###    #### ####  ##    ###  ##    \n");
-		printf("     ##  ###  ##    ##  ##    ##      ###       ###    ##    ###  ####  ##    ### ###    \n");
-		printf("     ##########    ######     ##      ###       ###    ##    ###  ###   ##    ######      \n");
-		printf("     ####  ####     ###       ##      ###       ###    ##    ##   ###   ##    ###         \n");
-		printf("      ###  ###      ###    #  ##  #   ###    ##  ##   ###    ##   ###   ##  # ###    ##    \n");
-		printf("      ###  ###      ########  ## ##    #######   ###  ##     ##   ###   #####  ### ###     \n");
-		printf("      ##   ##        #####    ####      #####     #####      ##   ###   ####    #####  \n");
-		//------------------------------
-		Sleep(300); gotoxy(0, 0); system("cls"); setcolor(GREEN);
-
-
-
-		printf("                      ##\n");
-		printf(" ###   #   ##   ####  ##      ####    ####  ### ### ####    ####\n");
-		printf(" # ##  ##  ##  ## ##  ##     ##  #   ##  #### # # ### ##   ## ##\n");
-		printf("    #  ##  #   ## ##  ##     ##      #   ###  ##  ### ##   ## ##\n");
-		printf("    ########   ####   ##     ##     ##   ##   ##  ##  ##   ####\n");
-		printf("    ### ###    ##     ##  #  ##     ##   ##   ##  ##  ##   ##\n");
-		printf("    ### ###    ##   # ## ##  ##   #  ##  #    ##  ##  ## # ##   #\n");
-		printf("     #   #      ####   ###    ####   #####    ##  ##  ###   #### \n");
-		//------------------------------
-					//------------------------------
-		Sleep(300); gotoxy(0, 0); system("cls"); setcolor(BLUE);
-	}
-	setcolor(GREEN);
-	
-	printf("_________________________\n");
-		printf("|");setcolor(BLUE);printf("######################");setcolor(GREEN);printf("/\n");
-		printf("|");setcolor(BLUE);printf("####################");setcolor(GREEN);printf("//\n");
-		printf("|");setcolor(BLUE);printf("###################");setcolor(GREEN);printf("//\n");
-		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("| --------------\n");
-
-		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("|\n");
-		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("|\n");
-		printf("|");setcolor(BLUE);printf("####");setcolor(GREEN);printf("|\n");
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("---------------     _\n");
-
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("###############"); setcolor(GREEN); printf("\/    /"); setcolor(BLUE); printf("#"); setcolor(GREEN); printf("|\n");
-
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("#############"); setcolor(GREEN); printf("|     /"); setcolor(BLUE); printf("##"); setcolor(GREEN); printf("|\n");
-
-
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(YELLOW); printf("###############"); setcolor(GREEN); printf("\\  /"); setcolor(BLUE); printf("###"); setcolor(GREEN); printf("|\n");
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("--------------- "); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
-
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(BLUE); printf("                "); setcolor(GREEN); printf("|");  setcolor(BLUE); printf("####"); setcolor(GREEN); printf("| \n");
-
-		printf("|"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|"); setcolor(GREEN); printf("_______________ |"); setcolor(BLUE); printf("####"); setcolor(GREEN); printf("|\n");
-
-		printf("|");setcolor(BLUE);printf("##########################");setcolor(GREEN);printf("| \n");
-		printf("|");setcolor(BLUE);printf("##########################");setcolor(GREEN);printf("| \n");
-		printf("|");setcolor(BLUE);printf("##########################");setcolor(GREEN); printf("| \n");
-		printf("----------------------------\n");
-
-
-
-	printf("\n welcome to my project! check out the code in my github :");
-	setcolor(GREEN);
-	printf("https://github.com/ErfanGerami");
-	setcolor(WHITE);
-	printf(" \n\n \n___________________________________PRESS ENTER KEY TO CONTINUE____________________________________");
-	while (getchar() != 10);
-												
 }
 
