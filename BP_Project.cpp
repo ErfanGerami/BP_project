@@ -32,7 +32,7 @@ const int HARDSCORE = 2;
 
 #pragma region structs, unions,Enums
 
-typedef enum State { Main, Register, SignIn,Game } State;
+typedef enum State { Main, Register, SignIn,InGame } State;
 typedef enum WordKind { OrdinaryWord, LongWord, HardWord, UnClearWord } WordKind;
 
 typedef struct Entry {
@@ -120,6 +120,9 @@ int wave;
 #pragma endregion
 
 #pragma region funciton prototypes
+void StartWave();
+void GameMenu();
+void PrintGameMenu();
 void my_callback_on_key_arrival(char c);
 void PrintMainMenu();
 void PrintRegisterMenu();
@@ -143,8 +146,8 @@ void welcome();
 void SignInMenu();
 void SignInEval();
 WordKind GenerateUnclear(char word[25]);
-
 void CreatNewLinkedList(int ord, int Long, int hard, int Unclear);
+void PrintFace(int happy);
 
 #pragma endregion
 
@@ -156,6 +159,7 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear);
 //-------------------------------------------------------------------------
 int main(void) {
 	//initilizinfg public varaibkes-------------
+	wave = 0;
 	NumberOfHeads = 0;
 	WhereInOrd=0;
 	WhereInHard=0;
@@ -169,8 +173,8 @@ int main(void) {
 	//Remember To Uncomment;
 
 	//MusicPlayer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Music, NULL, 0, NULL);
+	//welcome();
 
-	welcome();
 	Busy = 0;
 	CurserPos[0] = 0;
 	CurserPos[1] = 0;
@@ -181,7 +185,7 @@ int main(void) {
 	
 
 	//MainMenu();
-	Game();
+	GameMenu();
 
 
 	HANDLE BlinkThread= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) Colorize, NULL, 0, NULL);
@@ -209,90 +213,100 @@ DWORD WINAPI Colorize() {
 	int prevSelected = Selected;
 	Option CurrentOption;
 	while (1) {
+
 		Sleep(400);
-		while (Busy);
-		Busy = 1;
+		if (CurrentState!=InGame) {
+			while (Busy);
+			Busy = 1;
 
 
 
-		if (AllInMenu[Selected].OptionOrEntry == 0) {
-			CurrentOption = AllInMenu[Selected].thing.option;
-			gotoxy(CurrentOption.Pos[0], CurrentOption.Pos[1]);
-			setcolor(GREEN);
-			printf(CurrentOption.text);
+			if (AllInMenu[Selected].OptionOrEntry == 0) {
+				CurrentOption = AllInMenu[Selected].thing.option;
+				gotoxy(CurrentOption.Pos[0], CurrentOption.Pos[1]);
+				setcolor(GREEN);
+				printf(CurrentOption.text);
 
-			setcolor(Color);
+				setcolor(Color);
+			}
+			Busy = 0;
+			Sleep(400);
+			Busy = 1;
+
+			if (AllInMenu[Selected].OptionOrEntry == 0) {
+				CurrentOption = AllInMenu[Selected].thing.option;
+				gotoxy(CurrentOption.Pos[0], CurrentOption.Pos[1]);
+				setcolor(BLUE);
+				printf(CurrentOption.text);
+
+				setcolor(Color);
+			}
+			Busy = 0;
 		}
-		Busy = 0;
-		Sleep(400);
-		Busy = 1;
-
-		if (AllInMenu[Selected].OptionOrEntry == 0) {
-			CurrentOption = AllInMenu[Selected].thing.option;
-			gotoxy(CurrentOption.Pos[0], CurrentOption.Pos[1]);
-			setcolor(BLUE);
-			printf(CurrentOption.text);
-
-			setcolor(Color);
-		}
-		Busy = 0;
 	}
 }
 void my_callback_on_key_arrival(char c) {
 	while (Busy);
 	Busy = 1;
-	if (c == 17) {
-		TerminateThread(MusicPlayer, 0);
-	}
-	else if (c == 72) {
-		ChangeOption(-1);
-	}
-	else if (c == 80) {
-		ChangeOption(1);
-	}
+	if (c == 'a') {
+		PrintFace(time(NULL) % 2);
 
-	else if (c == 13) {
-		if (AllInMenu[Selected].OptionOrEntry == 1) {
+	}
+	
+	if (CurrentState != InGame) {
+		if (c == 17) {
+			TerminateThread(MusicPlayer, 0);
+		}
+		else if (c == 72) {
+			ChangeOption(-1);
+		}
+		else if (c == 80) {
 			ChangeOption(1);
 		}
-		else {
-			if (CurrentState == Main) {
-				if (AllInMenu[Selected].thing.option.text[0] == 'R') {
-					RegisterMenu();
-				}
-				else if (AllInMenu[Selected].thing.option.text[0] == 'E') {
-					system("cls");
-					exit(0);
-				}
-				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
-					SignInMenu();
-				}
-			}
-			else if (CurrentState == Register) {
-				if (AllInMenu[Selected].thing.option.text[0] == 'B') {
-					MainMenu();
-				}
-				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
-					RegisterEval();
-				}
-			}
-			else if (CurrentState == SignIn) {
-				if (AllInMenu[Selected].thing.option.text[0] == 'B') {
-					MainMenu();
-				}
-				else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
-					SignInEval();
-				}
-			}
-		}
-	}
-	else if (AllInMenu[Selected].OptionOrEntry == 1 && c != -32) {
-		if (c == 32) {
-			Log("No Spaces", RED);
-			return;
-		}
-		Fill(c);
 
+		else if (c == 13) {
+			if (AllInMenu[Selected].OptionOrEntry == 1) {
+				ChangeOption(1);
+			}
+			else {
+				if (CurrentState == Main) {
+					if (AllInMenu[Selected].thing.option.text[0] == 'R') {
+						RegisterMenu();
+					}
+					else if (AllInMenu[Selected].thing.option.text[0] == 'E') {
+						system("cls");
+						exit(0);
+					}
+					else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+						SignInMenu();
+					}
+				}
+				else if (CurrentState == Register) {
+					if (AllInMenu[Selected].thing.option.text[0] == 'B') {
+						MainMenu();
+					}
+					else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+						RegisterEval();
+					}
+				}
+				else if (CurrentState == SignIn) {
+					if (AllInMenu[Selected].thing.option.text[0] == 'B') {
+						MainMenu();
+					}
+					else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+						SignInEval();
+					}
+				}
+			}
+		}
+		else if (AllInMenu[Selected].OptionOrEntry == 1 && c != -32) {
+			if (c == 32) {
+				Log("No Spaces", RED);
+				return;
+			}
+			Fill(c);
+
+		}
 	}
 	Busy = 0;
 }
@@ -471,66 +485,6 @@ void PrintOptionOrEntry(OptionOrEntry opORen,int color) {
 	gotoxy(CurserPos[0], CurserPos[1]);
 	setcolor(Color);
 }
-void PrintMainMenu() {
-
-	setcolor(WHITE);
-	printf("____________________________________________  \n");
-	printf("||   logs:                                ||  \n");
-	printf("||                                        ||  \n");
-	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
-	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||Press CTRL+q to stop music              ||  \n");
-	printf("--------------------------------------------  \n");
-	gotoxy(CurserPos[0], CurserPos[1]);
-
-
-}
-void PrintRegisterMenu() {
-
-	setcolor(WHITE);
-	printf("____________________________________________  \n");
-	printf("||   logs:                                ||  \n");
-	printf("||                                        ||  \n");
-	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
-	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("--------------------------------------------  \n");
-	gotoxy(CurserPos[0], CurserPos[1]);
-
-
-}
 void welcome() {
 	int cnt = 4;
 	setcolor(BLUE);
@@ -606,6 +560,145 @@ void welcome() {
 	while (getchar() != 10);
 
 }
+void PrintFace(int happy) {
+	int start = 9;
+	if (happy == 0) {
+		setcolor(RED);
+		gotoxy(31, start);
+		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start);
+		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start+1);
+		printf("--------$$$$$$$$$$-----------$$$$$$$$$$-----\n"); gotoxy(31, start + 2);
+		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start + 3);
+		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start + 4);
+		printf("--------------------#######-----------------\n"); gotoxy(31, start + 5);
+		printf("----------------################------------\n"); gotoxy(31, start + 6);
+		printf("----------- ######################----------\n"); gotoxy(31, start + 7);
+		printf("---------- ###########--############--------\n"); gotoxy(31, start + 8);
+		printf("----------########---------##########-------\n"); gotoxy(31, start + 9);
+		printf("---------#####------------------######------\n"); gotoxy(31, start + 10);
+		printf("--------###-------------------------####----\n"); gotoxy(31, start + 11);
+		printf("--------#------------------------------#----\n"); gotoxy(31, start + 12);
+	}
+	else {
+		setcolor(GREEN);
+		gotoxy(31, start);
+		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start);
+		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start + 1);
+		printf("--------$$$$$$$$$$-----------$$$$$$$$$$-----\n"); gotoxy(31, start + 2);
+		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start + 3);
+		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start + 4);
+		printf("--------#------------------------------#----\n"); gotoxy(31, start + 5);
+		printf("--------###-------------------------####----\n"); gotoxy(31, start + 6);
+		printf("---------#####------------------######------\n"); gotoxy(31, start + 7);
+		printf("----------########---------##########-------\n"); gotoxy(31, start + 8);
+		printf("---------- ###########--############--------\n"); gotoxy(31, start + 9);
+		printf("----------- ######################----------\n"); gotoxy(31, start + 10);
+		printf("----------------################------------\n"); gotoxy(31, start + 11);
+		printf("---------------------######-----------------\n"); gotoxy(31, start + 12);
+
+
+	}
+	setcolor(Color);
+	gotoxy(CurserPos[0], CurserPos[1]);
+}
+void PrintMainMenu() {
+
+	setcolor(WHITE);
+	printf("____________________________________________  \n");
+	printf("||   logs:                                ||  \n");
+	printf("||                                        ||  \n");
+	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
+	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||Press CTRL+q to stop music              ||  \n");
+	printf("--------------------------------------------  \n");
+	gotoxy(CurserPos[0], CurserPos[1]);
+
+
+}
+void PrintRegisterMenu() {
+
+	setcolor(WHITE);
+	printf("____________________________________________  \n");
+	printf("||   logs:                                ||  \n");
+	printf("||                                        ||  \n");
+	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
+	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("--------------------------------------------  \n");
+	gotoxy(CurserPos[0], CurserPos[1]);
+
+
+}
+
+void PrintGameMenu() {
+	system("cls");
+	setcolor(WHITE);
+	gotoxy(0, 0);
+	
+	printf("__________________________________________________________________________________________  \n");
+	printf("||                           || User:                                      || \n");
+	printf("||                           ||----------------------------------------------\n");
+	printf("||                           || Wave:                                      || \n");
+	printf("||                           ||----------------------------------------------\n");
+	printf("||                           || Score:                                     || \n");
+	printf("||                           ||----------------------------------------------\n");
+	printf("||                           || logs:                                      ||\n");
+	printf("||                           ||----------------------------------------------  \n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n");
+	printf("||                           ||                                            ||\n"); setcolor(RED);
+	printf("------------------------------------------------------------------------------------------\n");
+	PrintFace(1);
+
+
+
+	setcolor(Color);
+	gotoxy(CurserPos[0], CurserPos[1]);
+}
+
 
 #pragma endregion
 
@@ -783,6 +876,11 @@ void SignInMenu() {
 	Busy = 0;
 
 }
+void GameMenu() {
+	CurrentState = InGame;
+	PrintGameMenu();
+}
+
 #pragma endregion
 
 WordKind  GenerateUnclear(char word[25]) {
@@ -1094,6 +1192,9 @@ void HashPass(char pass[20]) {
 	
 	
 
+	
+}
+void StartWave() {
 	
 }
 
