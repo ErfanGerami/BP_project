@@ -28,7 +28,7 @@ const int ORDSCORE = 1;
 const int LONGSCORE = 2;
 const int HARDSCORE = 2;
 const int GAMEWIDTH=26;
-const int MInSHOWNhEIGHT=2;
+const int MInSHOWNhEIGHT=1;
 #pragma endregion
 
 #pragma region structs, unions,Enums
@@ -97,6 +97,7 @@ typedef struct Word {
 	int UnCLearLenght;
 }Word;
 
+
 #pragma endregion
 
 #pragma region public variables
@@ -122,6 +123,7 @@ int wave;
 Word** UnClears;
 int UnCLearCnt;
 HANDLE UnClearChangingSizeThread;
+Word* SelectedWord;
 #pragma endregion
 
 #pragma region funciton prototypes
@@ -154,7 +156,9 @@ WordKind GenerateUnclear(char word[25]);
 void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight);
 void PrintFace(int happy);
 void PrintLinkedList(Word* head, int HeadHeight,int color,int n);
-
+void shuffle(Word** head);
+void GetDown();
+void RestGameMenu();
 #pragma endregion
 
 
@@ -188,7 +192,6 @@ int main(void) {
 	CurserPos[1] = 0;
 
 	system("cls");
-	ClearTerminal();
 	//initializing////////
 	
 
@@ -644,8 +647,8 @@ void PrintLinkedList(Word* head,int HeadHeight,int color,int n) {
 	setcolor(color);
 	
 	while (n--) {
-		if (temp->height < MInSHOWNhEIGHT)
-			break;
+		//if (temp->height < MInSHOWNhEIGHT)
+			//break;
 
 
 		if (temp->IsItUnClear == 0) {
@@ -727,11 +730,11 @@ void PrintRegisterMenu() {
 }
 
 void PrintGameMenu() {
-	system("cls");
+	//system("cls");
 	setcolor(WHITE);
 	gotoxy(0, 0);
 	
-	printf("____________________________________________________________________________  \n");
+	printf("____________________________________________________________________________\n");
 	printf("||                          || User:                                      || \n");
 	printf("||                          ||----------------------------------------------\n");
 	printf("||                          || Wave:                                      || \n");
@@ -763,6 +766,16 @@ void PrintGameMenu() {
 
 	setcolor(Color);
 	gotoxy(CurserPos[0], CurserPos[1]);
+}
+void RestGameMenu() {
+	int n = 21;
+	gotoxy(0, 1);
+	setcolor(WHITE);
+	while (n--) {
+		printf("||                          ||\n");
+	}
+	setcolor(Color);
+
 }
 
 
@@ -945,10 +958,8 @@ void SignInMenu() {
 void GameMenu() {
 	CurrentState = InGame;
 	PrintGameMenu();
-	CreatNewLinkedList(2, 2, 2, 2,23);
-	PrintLinkedList(Heads, Heads->height, WHITE, 8);
 	UnClearChangingSizeThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UnClearSizeChange, NULL, 0, NULL);
-
+	StartWave();
 
 }
 
@@ -1044,7 +1055,7 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 		fgets(Chert, 1000, fileLong);
 	}
 
-	FILE* fileHard = fopen("ord.txt", "r");
+	FILE* fileHard = fopen("hard.txt", "r");
 	for (int i = 0; i < WhereInHard; i++) {
 		//OrdWords[0] is just for going through the file not that we need it;
 		fgets(Chert, 1000, fileHard);
@@ -1057,53 +1068,55 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 		fgets(Chert, 1000, fileOrd);
 		Chert[strlen(Chert) - 1] = '\0';
 		TempHead->kind = OrdinaryWord;
-		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
 		TempHead->IsItUnClear = 0;
 		TempHead->next = (Word*)malloc(sizeof(Word));
+		if (i == hard - 1&&Long==0&&hard==0&&Unclear==0) {
+			TempHead->next = NULL;
+		}
 		TempHead = TempHead->next;
-		HeadHeight--;
 	}
 	for (int i = 0; i < Long; i++) {
 		fgets(Chert, 1000, fileLong);
 		Chert[strlen(Chert) - 1] = '\0';
 		TempHead->kind = HardWord;
-		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
 		TempHead->IsItUnClear = 0;
 		TempHead->next = (Word*)malloc(sizeof(Word));
+		if (i == Long - 1 && hard == 0 && Unclear == 0) {
+			TempHead->next = NULL;
+		}
 		TempHead = TempHead->next;
-		HeadHeight--;
 	}
 	for (int i = 0; i < hard; i++) {
 		fgets(Chert, 1000, fileHard);
 		Chert[strlen(Chert) - 1] = '\0';
 		TempHead->kind = LongWord;
-		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
 		TempHead->IsItUnClear = 0;
 		TempHead->next = (Word*)malloc(sizeof(Word));
+		if (i == hard - 1 && Unclear == 0) {
+			TempHead->next = NULL;
+		}
 		TempHead = TempHead->next;
-		HeadHeight--;
 	}
 	
 	UnClears = (Word**)realloc(UnClears, (UnCLearCnt + Unclear) * sizeof(Word*));
 	for (int i = 0; i < Unclear; i++) {
 		UnClears[UnCLearCnt]= TempHead;
 		TempHead->kind = GenerateUnclear(Chert);
-		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
 		TempHead->UnCLearLenght = rand()%15+4;
 		TempHead->IsItUnClear = 1;
-		if (i != Unclear - 1) {
-			TempHead->next = (Word*)malloc(sizeof(Word));
+		
+		TempHead->next = (Word*)malloc(sizeof(Word));
+		
+		if(i==Unclear-1) {
+			TempHead->next = NULL;
+		}else {
 			TempHead = TempHead->next;
 		}
-		else {
-			TempHead->next = NULL;
-		}
 		UnCLearCnt++;
-		HeadHeight--;
 	}
 	
 
@@ -1111,7 +1124,17 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 	fclose(fileHard);
 	fclose(fileOrd);
 	fclose(fileLong);
+    Heads += NumberOfHeads - 1;
+	shuffle( &Heads);
+	Heads -= NumberOfHeads - 1;
 
+
+	TempHead = (Heads + NumberOfHeads - 1);
+	while (TempHead != NULL) {
+		TempHead->height = HeadHeight;
+		TempHead = TempHead->next;
+		HeadHeight--;
+	}
 
 
 }
@@ -1267,7 +1290,86 @@ void FillFiles() {
 
 
 }
+void shuffle(Word** head) {
+	
+	int size = 0;
+	Word* temp = (*head);
+	while (temp != NULL) {
+		temp=temp->next;
+		size++;
+	}
 
+	int NumberOfSwaps = rand() % 30+10;
+
+	int Index1;
+	int Index2;
+
+	//head always will be a easy word;when index is 0 the index 1 will be changed;
+	for (int i = 0; i < NumberOfSwaps; i++) {
+		Index1 = max(rand() % (size),0);
+		Index2 = max(rand() % (size),0);
+		
+		if (Index1 == Index2)
+			continue;
+		if(Index2<Index1){
+			int temp;
+			temp = Index1;
+			Index1 = Index2;
+			Index2 = temp;
+		}
+		Word* w1=*head;
+		Word* w2=*head;
+		for (int i = 0; i < Index2 - 1; i++) {
+			w2 = w2->next;
+		}
+
+		if (Index1 == 0) {
+			if (Index2 == 1) {
+				temp = w2->next;
+				w1->next = w1->next->next;
+				temp->next = *head;
+				*head = temp;
+			}
+			else {
+				temp = w2->next->next;
+				w2->next->next =( *head)->next;
+				Word* temp2 = w2->next;
+				w2->next =* head;
+				(*head)->next = temp;
+				(*head) = temp2;
+				
+			}
+			
+		}
+		else {
+			for (int i = 0; i < Index1 - 1; i++) {
+				w1 = w1->next;
+			}
+			
+			if (Index1 == Index2 - 1) {
+				temp = w2->next;
+				w1->next->next = w2->next->next;
+				w1->next = temp;
+				w1->next->next = w2;
+
+			}
+			else {
+				temp = w1->next->next;
+				w1->next->next = w2->next->next;
+				w2->next->next = temp;
+				temp = w1->next;
+				w1->next = w2->next;
+				w2->next = temp;
+			}
+		}
+		
+		
+
+		
+	}
+
+	
+}
 void HashPass(char pass[20]) {
 	int key = 2;
 	int mode = 20;
@@ -1282,6 +1384,20 @@ void HashPass(char pass[20]) {
 	
 }
 void StartWave() {
+	CreatNewLinkedList(2, 3, 3, 2, 10);
+	Busy = 1;
+	PrintLinkedList(Heads, Heads->height, WHITE, 10);
+	Busy = 0;
+	RestGameMenu();
 	
+}
+void GetDown() {
+	for (int i = 0; i < NumberOfHeads; i++) {
+		Word* temp = Heads + i;
+		while (temp != NULL) {
+			temp->height++;
+			temp = temp->next;
+		}
+	}
 }
 
