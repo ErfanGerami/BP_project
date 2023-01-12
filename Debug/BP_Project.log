@@ -1,6 +1,6 @@
 ﻿  BP_Project.cpp
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(169): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(534): warning C4129: '/': unrecognized character escape sequence
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1187): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(954): warning C4715: 'GenerateUnclear': not all control paths return a value
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(177): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(571): warning C4129: '/': unrecognized character escape sequence
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1274): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1025): warning C4715: 'GenerateUnclear': not all control paths return a value
   BP_Project.vcxproj -> C:\Users\Geramizade\source\repos\BP_Project\Debug\BP_Project.exe

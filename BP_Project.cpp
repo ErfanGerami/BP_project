@@ -27,7 +27,8 @@ const int BLUE = 3;
 const int ORDSCORE = 1;
 const int LONGSCORE = 2;
 const int HARDSCORE = 2;
-
+const int GAMEWIDTH=26;
+const int MInSHOWNhEIGHT=2;
 #pragma endregion
 
 #pragma region structs, unions,Enums
@@ -91,8 +92,9 @@ typedef struct Word {
 	char word[25];
 	WordKind kind;
 	Word* next;
-	int pos[2];
+	int height;
 	int IsItUnClear;
+	int UnCLearLenght;
 }Word;
 
 #pragma endregion
@@ -117,6 +119,9 @@ int WhereInOrd;
 int WhereInHard;
 int WherInLong;
 int wave;
+Word** UnClears;
+int UnCLearCnt;
+HANDLE UnClearChangingSizeThread;
 #pragma endregion
 
 #pragma region funciton prototypes
@@ -146,8 +151,9 @@ void welcome();
 void SignInMenu();
 void SignInEval();
 WordKind GenerateUnclear(char word[25]);
-void CreatNewLinkedList(int ord, int Long, int hard, int Unclear);
+void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight);
 void PrintFace(int happy);
+void PrintLinkedList(Word* head, int HeadHeight,int color,int n);
 
 #pragma endregion
 
@@ -159,6 +165,8 @@ void PrintFace(int happy);
 //-------------------------------------------------------------------------
 int main(void) {
 	//initilizinfg public varaibkes-------------
+	Color = WHITE;
+	UnCLearCnt = 0;
 	wave = 0;
 	NumberOfHeads = 0;
 	WhereInOrd=0;
@@ -169,7 +177,7 @@ int main(void) {
 	srand(time(NULL));
 
 	FillFiles();
-	CreatNewLinkedList(2, 2, 2, 2);
+	
 	//Remember To Uncomment;
 
 	//MusicPlayer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Music, NULL, 0, NULL);
@@ -203,7 +211,36 @@ int main(void) {
 
 
 #pragma region thread functions
+DWORD WINAPI UnClearSizeChange() {
+	while (1) {
+		Sleep(800);
+		while (Busy);
+		Busy = 1;
+		for (int i = 0; i < UnCLearCnt; i++) {
+			if (UnClears[i]->height >= MInSHOWNhEIGHT) {
+				setcolor(rand() % 10 + 1);
+				gotoxy((GAMEWIDTH - UnClears[i]->UnCLearLenght) / 2 + 2, UnClears[i]->height);
+				printf("             ");
+				if (UnClears[i]->UnCLearLenght > 15) {
+					printf("      ");
+				}
+				UnClears[i]->UnCLearLenght = (UnClears[i]->UnCLearLenght + 2) % 20;
+				gotoxy((GAMEWIDTH - UnClears[i]->UnCLearLenght) / 2 + 2 , UnClears[i]->height);
+				for (int j = 0; j < UnClears[i]->UnCLearLenght; j++) {
+					printf("*");
+				}
 
+				
+				
+
+				
+			}
+
+		}
+		setcolor(Color);
+		Busy = 0;
+	}
+}
 DWORD WINAPI Music() {
 	while (1) {
 		Play();
@@ -601,6 +638,33 @@ void PrintFace(int happy) {
 	setcolor(Color);
 	gotoxy(CurserPos[0], CurserPos[1]);
 }
+
+void PrintLinkedList(Word* head,int HeadHeight,int color,int n) {
+	Word* temp = head;
+	setcolor(color);
+	
+	while (n--) {
+		if (temp->height < MInSHOWNhEIGHT)
+			break;
+
+
+		if (temp->IsItUnClear == 0) {
+			gotoxy((GAMEWIDTH - strlen(temp->word)) / 2 + 2, HeadHeight);
+			printf(temp->word);
+		}
+		else {
+			gotoxy((GAMEWIDTH - temp->UnCLearLenght) / 2 +2, HeadHeight);
+			for (int i = 0; i < temp->UnCLearLenght; i++) {
+				printf("*");
+			}
+			int t=3;
+		}
+		temp = temp->next;
+		HeadHeight--;
+	}
+	setcolor(Color);
+	
+}
 void PrintMainMenu() {
 
 	setcolor(WHITE);
@@ -667,30 +731,32 @@ void PrintGameMenu() {
 	setcolor(WHITE);
 	gotoxy(0, 0);
 	
-	printf("__________________________________________________________________________________________  \n");
-	printf("||                           || User:                                      || \n");
-	printf("||                           ||----------------------------------------------\n");
-	printf("||                           || Wave:                                      || \n");
-	printf("||                           ||----------------------------------------------\n");
-	printf("||                           || Score:                                     || \n");
-	printf("||                           ||----------------------------------------------\n");
-	printf("||                           || logs:                                      ||\n");
-	printf("||                           ||----------------------------------------------  \n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n");
-	printf("||                           ||                                            ||\n"); setcolor(RED);
-	printf("------------------------------------------------------------------------------------------\n");
+	printf("____________________________________________________________________________  \n");
+	printf("||                          || User:                                      || \n");
+	printf("||                          ||----------------------------------------------\n");
+	printf("||                          || Wave:                                      || \n");
+	printf("||                          ||----------------------------------------------\n");
+	printf("||                          || Score:                                     || \n");
+	printf("||                          ||----------------------------------------------\n");
+	printf("||                          || logs:                                      ||\n");
+	printf("||                          ||----------------------------------------------  \n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n");
+	printf("||                          ||                                            ||\n"); setcolor(RED);
+	printf("----------------------------------------------------------------------------\n");
+	printf("----------------------------------------------------------------------------\n");
+
 	PrintFace(1);
 
 
@@ -879,6 +945,11 @@ void SignInMenu() {
 void GameMenu() {
 	CurrentState = InGame;
 	PrintGameMenu();
+	CreatNewLinkedList(2, 2, 2, 2,23);
+	PrintLinkedList(Heads, Heads->height, WHITE, 8);
+	UnClearChangingSizeThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UnClearSizeChange, NULL, 0, NULL);
+
+
 }
 
 #pragma endregion
@@ -952,11 +1023,11 @@ WordKind  GenerateUnclear(char word[25]) {
 	}
 
 }
-void CreatNewLinkedList(int ord, int Long, int hard, int Unclear) {
+void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight) {
 	char Chert[25];
 
 
-
+	
 	Heads = (Word*)realloc(Heads, (NumberOfHeads + 1) * sizeof(Word));
 	NumberOfHeads++;
 	Word * TempHead = Heads + NumberOfHeads - 1;
@@ -984,41 +1055,57 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear) {
 
 	for (int i = 0; i < ord; i++) {
 		fgets(Chert, 1000, fileOrd);
+		Chert[strlen(Chert) - 1] = '\0';
 		TempHead->kind = OrdinaryWord;
+		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
 		TempHead->IsItUnClear = 0;
 		TempHead->next = (Word*)malloc(sizeof(Word));
 		TempHead = TempHead->next;
+		HeadHeight--;
 	}
 	for (int i = 0; i < Long; i++) {
 		fgets(Chert, 1000, fileLong);
+		Chert[strlen(Chert) - 1] = '\0';
 		TempHead->kind = HardWord;
+		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
 		TempHead->IsItUnClear = 0;
 		TempHead->next = (Word*)malloc(sizeof(Word));
 		TempHead = TempHead->next;
+		HeadHeight--;
 	}
 	for (int i = 0; i < hard; i++) {
 		fgets(Chert, 1000, fileHard);
+		Chert[strlen(Chert) - 1] = '\0';
 		TempHead->kind = LongWord;
+		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
 		TempHead->IsItUnClear = 0;
 		TempHead->next = (Word*)malloc(sizeof(Word));
 		TempHead = TempHead->next;
+		HeadHeight--;
 	}
+	
+	UnClears = (Word**)realloc(UnClears, (UnCLearCnt + Unclear) * sizeof(Word*));
 	for (int i = 0; i < Unclear; i++) {
-		fgets(Chert, 1000, fileHard);
+		UnClears[UnCLearCnt]= TempHead;
 		TempHead->kind = GenerateUnclear(Chert);
+		TempHead->height = HeadHeight;
 		strcpy(TempHead->word, Chert);
+		TempHead->UnCLearLenght = rand()%15+4;
 		TempHead->IsItUnClear = 1;
 		if (i != Unclear - 1) {
 			TempHead->next = (Word*)malloc(sizeof(Word));
 			TempHead = TempHead->next;
 		}
 		else {
-
+			TempHead->next = NULL;
 		}
+		UnCLearCnt++;
+		HeadHeight--;
 	}
+	
 
 
 	fclose(fileHard);
