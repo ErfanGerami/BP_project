@@ -1,6 +1,10 @@
 ﻿  BP_Project.cpp
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(181): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(574): warning C4129: '/': unrecognized character escape sequence
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1376): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1036): warning C4715: 'GenerateUnclear': not all control paths return a value
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(212): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(727): warning C4129: '/': unrecognized character escape sequence
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(814): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(943): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1267): warning C4244: 'argument': conversion from 'double' to 'DWORD', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1519): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1764): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1418): warning C4715: 'GenerateUnclear': not all control paths return a value
   BP_Project.vcxproj -> C:\Users\Geramizade\source\repos\BP_Project\Debug\BP_Project.exe

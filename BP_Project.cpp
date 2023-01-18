@@ -29,11 +29,16 @@ const int LONGSCORE = 2;
 const int HARDSCORE = 2;
 const int GAMEWIDTH=26;
 const int MInSHOWNhEIGHT=1;
+const int MAxSHOWnHEIGHt = 22;
+const int EASYTIME = 10;
+const int MEDIUMTIME = 8;
+const int HARDTIME = 10;
 #pragma endregion
 
 #pragma region structs, unions,Enums
+typedef enum Mode { EasyMode, MediumMode, HardMode,Right,Left } Mode;
 
-typedef enum State { Main, Register, SignIn,InGame } State;
+typedef enum State { Main, Register, SignIn,InGame,Choice ,History} State;
 typedef enum WordKind { OrdinaryWord, LongWord, HardWord, UnClearWord } WordKind;
 
 typedef struct Entry {
@@ -90,11 +95,14 @@ typedef struct Plyer {
 
 typedef struct Word {
 	char word[25];
+	int TrueFalse[25];
 	WordKind kind;
 	Word* next;
 	int height;
 	int IsItUnClear;
 	int UnCLearLenght;
+	int color;
+	int Faults;
 }Word;
 
 
@@ -124,6 +132,13 @@ Word** UnClears;
 int UnCLearCnt;
 HANDLE UnClearChangingSizeThread;
 Word* SelectedWord;
+double RestTime;
+
+int ListAndLock[2];
+int Score;
+Mode mode;
+int DoColorize;
+
 #pragma endregion
 
 #pragma region funciton prototypes
@@ -135,6 +150,7 @@ void PrintMainMenu();
 void PrintRegisterMenu();
 void PrintOptionOrEntry(OptionOrEntry opORen, int color);
 void Log(const char* text, int color);
+void GameLog(const char* text, int color);
 void PrintSquare(int width, int  height, int StartX, int StartY, int Color);
 void DeleteSquare(int width, int  height, int StartX, int StartY);
 void ChangeOption(int to);
@@ -155,10 +171,18 @@ void SignInEval();
 WordKind GenerateUnclear(char word[25]);
 void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight);
 void PrintFace(int happy);
-void PrintLinkedList(Word* head, int HeadHeight,int color,int n);
+void PrintLinkedList(Word* head,int color);
 void shuffle(Word** head);
 void GetDown();
-void RestGameMenu();
+void ResetGameMenu();
+void ShowScore();
+void ShowWave();
+void NextWord();
+void GameOver();
+void ChoiceMenu();
+void PrintChoiceMenu();
+void PrintHistory(int n1, int n2, int n3);
+
 #pragma endregion
 
 
@@ -169,6 +193,13 @@ void RestGameMenu();
 //-------------------------------------------------------------------------
 int main(void) {
 	//initilizinfg public varaibkes-------------
+	DoColorize = 1;
+	Score = 0;
+	mode = EasyMode;
+	ListAndLock[0] = 0;
+	ListAndLock[1] = 0;
+
+	RestTime = 3;
 	Color = WHITE;
 	UnCLearCnt = 0;
 	wave = 0;
@@ -181,7 +212,7 @@ int main(void) {
 	srand(time(NULL));
 
 	FillFiles();
-	
+
 	//Remember To Uncomment;
 
 	//MusicPlayer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Music, NULL, 0, NULL);
@@ -194,17 +225,20 @@ int main(void) {
 	system("cls");
 	//initializing////////
 	
-
+	//call menu functions here------------------
+	ChoiceMenu();
+	//--------------------
 	//MainMenu();
-	GameMenu();
-
-
-	HANDLE BlinkThread= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) Colorize, NULL, 0, NULL);
+	HANDLE BlinkThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Colorize, NULL, 0, NULL);
 	HANDLE thread_id = start_listening(my_callback_on_key_arrival);
+	//GameMenu();
 
-	WaitForSingleObject(thread_id, INFINITE);
 
-	return 0;
+
+
+WaitForSingleObject(thread_id, INFINITE);
+
+return 0;
 }
 //-------------------------------------------------------------------------
 //-------------------------------------------------------------------------
@@ -221,22 +255,25 @@ DWORD WINAPI UnClearSizeChange() {
 		Busy = 1;
 		for (int i = 0; i < UnCLearCnt; i++) {
 			if (UnClears[i]->height >= MInSHOWNhEIGHT) {
+				int color = rand() % 10 + 1;
 				setcolor(rand() % 10 + 1);
+				UnClears[i]->color = color;
+
 				gotoxy((GAMEWIDTH - UnClears[i]->UnCLearLenght) / 2 + 2, UnClears[i]->height);
 				printf("             ");
 				if (UnClears[i]->UnCLearLenght > 15) {
 					printf("      ");
 				}
 				UnClears[i]->UnCLearLenght = (UnClears[i]->UnCLearLenght + 2) % 20;
-				gotoxy((GAMEWIDTH - UnClears[i]->UnCLearLenght) / 2 + 2 , UnClears[i]->height);
+				gotoxy((GAMEWIDTH - UnClears[i]->UnCLearLenght) / 2 + 2, UnClears[i]->height);
 				for (int j = 0; j < UnClears[i]->UnCLearLenght; j++) {
 					printf("*");
 				}
 
-				
-				
 
-				
+
+
+
 			}
 
 		}
@@ -255,9 +292,10 @@ DWORD WINAPI Colorize() {
 	while (1) {
 
 		Sleep(400);
-		if (CurrentState!=InGame) {
+		if (DoColorize) {
 			while (Busy);
 			Busy = 1;
+
 
 
 
@@ -270,7 +308,10 @@ DWORD WINAPI Colorize() {
 				setcolor(Color);
 			}
 			Busy = 0;
-			Sleep(400);
+		}
+		Sleep(400);
+		if(DoColorize){
+			
 			Busy = 1;
 
 			if (AllInMenu[Selected].OptionOrEntry == 0) {
@@ -286,14 +327,68 @@ DWORD WINAPI Colorize() {
 	}
 }
 void my_callback_on_key_arrival(char c) {
+
 	while (Busy);
 	Busy = 1;
-	if (c == 'a') {
-		PrintFace(time(NULL) % 2);
-
-	}
 	
-	if (CurrentState != InGame) {
+	if (CurrentState == InGame) {
+		//Deleting
+		if ((Heads + ListAndLock[0])->height>=MInSHOWNhEIGHT) {
+			if (c == 8) {
+				if (ListAndLock[1] == 0) {
+
+					GameLog("Nothing To Erase", RED);
+				}
+				else {
+
+					gotoxy((GAMEWIDTH - strlen((Heads + ListAndLock[0])->word)) / 2 + 2 + (ListAndLock[1] - 1), (Heads + ListAndLock[0])->height);
+					setcolor(WHITE);
+					printf("%c", (Heads + ListAndLock[0])->word[ListAndLock[1] - 1]);
+					if ((Heads + ListAndLock[0])->TrueFalse[ListAndLock[1] - 1] == 0) {
+						(Heads + ListAndLock[0])->Faults--;
+					}
+					(Heads + ListAndLock[0])->TrueFalse[ListAndLock[1] - 1] = -1;
+					ListAndLock[1]--;
+					if ((Heads + ListAndLock[0])->Faults == 0) {
+						PrintFace(1);
+					}
+
+				}
+			}
+			else {
+				if (c == (Heads + ListAndLock[0])->word[ListAndLock[1]]) {
+
+
+					setcolor(YELLOW);
+					(Heads + ListAndLock[0])->TrueFalse[ListAndLock[1]] = 1;
+				}
+				else {
+
+
+					setcolor(RED);
+					(Heads + ListAndLock[0])->TrueFalse[ListAndLock[1]] = 0;
+					(Heads + ListAndLock[0])->Faults++;
+				}
+				gotoxy((GAMEWIDTH - strlen((Heads + ListAndLock[0])->word)) / 2 + 2 + (ListAndLock[1]), (Heads + ListAndLock[0])->height);
+				printf("%c", (Heads + ListAndLock[0])->word[ListAndLock[1]]);
+				ListAndLock[1]++;
+				if ((Heads + ListAndLock[0])->Faults == 1) {//means that user just made is first fault;
+					PrintFace(0);
+				}
+				if (ListAndLock[1] == strlen((Heads + ListAndLock[0])->word)) {
+					NextWord();
+					//going next------------------------------------------------------------------------
+
+				}
+				//-----------------------------------------------------------
+
+
+			}
+
+
+		}
+	}
+	else {
 		if (c == 17) {
 			TerminateThread(MusicPlayer, 0);
 		}
@@ -309,6 +404,38 @@ void my_callback_on_key_arrival(char c) {
 				ChangeOption(1);
 			}
 			else {
+				//Choice Menu-----------------------------------------------------
+				if (CurrentState == Choice) {
+					if (AllInMenu[Selected].thing.option.text[0] == '|') {
+						int Games[3];
+						player.PrevGames[0].score = 10;
+						player.PrevGames[0].BeenPlayed = 1;
+						player.PrevGames[1].score = 50;
+						player.PrevGames[1].BeenPlayed = 1;
+					
+						for (int i = 0; i < 3; i++) {
+							if (player.PrevGames[i].BeenPlayed == 1) {
+								Games[i] = player.PrevGames[i].score;
+							}
+							else {
+								Games[i] =0;
+
+							}
+						}
+						PrintHistory(Games[0], Games[1], Games[2]);
+
+					}
+
+
+					else if (AllInMenu[Selected].thing.option.text[0] == 'E') {
+						system("cls");
+						exit(0);
+					}
+					else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+						SignInMenu();
+					}
+				}
+				//Main Menu------------------------------------------------------------------
 				if (CurrentState == Main) {
 					if (AllInMenu[Selected].thing.option.text[0] == 'R') {
 						RegisterMenu();
@@ -321,6 +448,7 @@ void my_callback_on_key_arrival(char c) {
 						SignInMenu();
 					}
 				}
+				//Register menu------------------------------------------------------------------
 				else if (CurrentState == Register) {
 					if (AllInMenu[Selected].thing.option.text[0] == 'B') {
 						MainMenu();
@@ -329,6 +457,7 @@ void my_callback_on_key_arrival(char c) {
 						RegisterEval();
 					}
 				}
+				//Sign In menu---------------------------------------------------------------------
 				else if (CurrentState == SignIn) {
 					if (AllInMenu[Selected].thing.option.text[0] == 'B') {
 						MainMenu();
@@ -348,6 +477,7 @@ void my_callback_on_key_arrival(char c) {
 
 		}
 	}
+	setcolor(Color);
 	Busy = 0;
 }
 void ClearTerminal() {
@@ -454,7 +584,16 @@ void SignInEval() {
 #pragma endregion
 
 #pragma region printing functions
-
+void ShowScore() {
+	setcolor(BLUE);
+	gotoxy(39, 5);
+	printf("%d", Score);
+}
+void ShowWave() {
+	setcolor(BLUE);
+	gotoxy(39, 3);
+	printf("%d", wave);
+}
 void DeleteSquare(int width, int  height, int StartX, int StartY) {
 
 	gotoxy(StartX, StartY);
@@ -503,12 +642,26 @@ void PrintSquare(int width, int  height, int StartX, int StartY, int Color) {
 
 }
 void Log(const char* text, int color) {
-	gotoxy(7, 2);
+
+	gotoxy(2, 2);
+	printf("              ");
+	gotoxy(2, 2);
 	setcolor(color);
 	printf(text);
 	gotoxy(CurserPos[0], CurserPos[1]);
 	setcolor(Color);
 }
+void GameLog(const char* text, int color) {
+	setcolor(color);
+	gotoxy(39, 7);
+	printf("                         ");
+	gotoxy(39, 7);
+	printf(text);
+	gotoxy(CurserPos[0], CurserPos[1]);
+	
+	setcolor(Color);
+}
+
 void PrintOptionOrEntry(OptionOrEntry opORen,int color) {
 	setcolor(color);
 	if (opORen.OptionOrEntry == 0) {
@@ -642,28 +795,46 @@ void PrintFace(int happy) {
 	gotoxy(CurserPos[0], CurserPos[1]);
 }
 
-void PrintLinkedList(Word* head,int HeadHeight,int color,int n) {
+void PrintLinkedList(Word* head,int color) {
 	Word* temp = head;
 	setcolor(color);
 	
-	while (n--) {
+	while (temp!=NULL) {
 		//if (temp->height < MInSHOWNhEIGHT)
 			//break;
 
-
-		if (temp->IsItUnClear == 0) {
-			gotoxy((GAMEWIDTH - strlen(temp->word)) / 2 + 2, HeadHeight);
-			printf(temp->word);
+		if (temp->color != 0) {
+			setcolor(temp->color);
 		}
 		else {
-			gotoxy((GAMEWIDTH - temp->UnCLearLenght) / 2 +2, HeadHeight);
+			setcolor(Color);
+		}
+		if (temp->IsItUnClear == 0) {
+			gotoxy((GAMEWIDTH - strlen(temp->word)) / 2 + 2, temp->height);
+			for (int i = 0; i < strlen(temp->word); i++) {
+				if (temp->TrueFalse[i] == -1) {
+					setcolor(WHITE);
+				}
+				else if (temp->TrueFalse[i] == 0) {
+					setcolor(RED);
+				}
+				else {
+					setcolor(YELLOW);
+
+				}
+				printf("%c", temp->word[i]);
+			}
+		}
+		else {
+
+			gotoxy((GAMEWIDTH - temp->UnCLearLenght) / 2 +2, temp->height);
 			for (int i = 0; i < temp->UnCLearLenght; i++) {
 				printf("*");
 			}
 			int t=3;
 		}
 		temp = temp->next;
-		HeadHeight--;
+		
 	}
 	setcolor(Color);
 	
@@ -728,6 +899,86 @@ void PrintRegisterMenu() {
 
 
 }
+void PrintHistory(int n1, int n2, int n3) {
+	CurrentState = History;
+	system("cls");
+	DoColorize = 0;
+	
+	while (max(max(n1, n1), n3) >= 50) {
+		n1 /= 2;
+		n2 /= 2;
+		n3 /= 2;
+	}
+	setcolor(WHITE);
+	int mini = min(min(n1, n2), n3);
+	n1 -= mini;
+	n2 -= mini;
+	n3 -= mini;
+	int ns[3] = { n1,n2,n3 };
+	int maxH = (max(max(n1, n2), n3));
+	int maxdown = 0;
+	int pos[3];
+	pos[0] = 1;
+	pos[1] = 51;
+	pos[2] = 101;
+	maxH += 10;
+	for (int i = 0; i < maxH + 5; i++) {
+		printf("|                                                                                           \n");
+		maxdown++;
+	}
+	printf("-----------------------------------------------------------------------------------------------------------  \n");
+	printf("_________________________________________PRESS ENTER KEY TO CONTINUE_________________________________________");
+
+
+	gotoxy(pos[0], n1);
+
+
+	int PartInt;
+	int height = maxH - ns[0];
+	for (int j = 0; j < 2; j++) {
+		if ((ns[j + 1] - ns[j]) == 0) {
+			PartInt = 0;
+		}
+		else {
+			PartInt = (pos[j + 1] - pos[j]) / ((ns[j + 1] - ns[j]) * 1.0);
+		}
+
+
+		gotoxy(pos[j], height);
+		printf("**");
+		pos[j] += (j + 1) * 2;
+		for (int i = 0; i < pos[j + 1] - pos[j]; i++) {
+
+			if (PartInt != 0 && i % PartInt == 0) {
+				if (PartInt < 0) {
+					printf("\\");
+					height++;
+				}
+				else {
+					printf("/");
+					height--;
+				}
+
+
+			}
+			else {
+				printf("_");
+			}
+			gotoxy(pos[j] + i, height);
+		}
+		printf("**");
+
+
+	}
+	gotoxy(CurserPos[0], CurserPos[1]);
+	while (getchar() != 10);
+
+
+	DoColorize = 1;
+	ChoiceMenu();
+
+
+}
 
 void PrintGameMenu() {
 	//system("cls");
@@ -767,7 +1018,7 @@ void PrintGameMenu() {
 	setcolor(Color);
 	gotoxy(CurserPos[0], CurserPos[1]);
 }
-void RestGameMenu() {
+void ResetGameMenu() {
 	int n = 21;
 	gotoxy(0, 1);
 	setcolor(WHITE);
@@ -776,6 +1027,46 @@ void RestGameMenu() {
 	}
 	setcolor(Color);
 
+}
+void PrintChoiceMenu() {
+	setcolor(WHITE);
+	gotoxy(0, 0);
+
+	printf("___________________________________________________________________________________________\n");
+	printf("||logs                      || Previos Games:                                            || \n");
+	printf("||                          ||                  |                     |                  || \n");
+	printf("||--------------------------||                  |                     |                  || \n");
+	printf("|| Options:                 ||                  |                     |                  || \n");
+	printf("||                          ||                  |                     |                  || \n");
+	printf("||                          ||                  |                     |                  || \n");
+	printf("||                          ||                  |                     |                  || \n");
+	printf("||                          ||                  |                     |                  || \n");
+	printf("||                          ||-------------------------------------------------------------\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("|| Restart Game:            ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||                          ||\n");
+	printf("||--------------------------||\n");
+
+
+
+
+
+	setcolor(Color);
+	gotoxy(CurserPos[0], CurserPos[1]);
 }
 
 
@@ -956,10 +1247,101 @@ void SignInMenu() {
 
 }
 void GameMenu() {
+	DoColorize = 0;
+	if (mode == EasyMode)
+		RestTime = EASYTIME;
+	else if (mode == MediumMode)
+		RestTime = MEDIUMTIME;
+	else if(mode == HardMode)
+		RestTime = HARDTIME;
+	
 	CurrentState = InGame;
+	while (Busy);
+
+	Busy = 1;
 	PrintGameMenu();
 	UnClearChangingSizeThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UnClearSizeChange, NULL, 0, NULL);
 	StartWave();
+	Busy = 0;
+	while (1) {
+		Sleep((RestTime/10) * 1000);
+		while (Busy);
+		Busy = 1;
+
+		GetDown();
+		Busy = 0;
+	
+	}
+
+}
+void ChoiceMenu() {
+	CurrentState = Choice;
+	OptionCnt = 9;
+	Selected = 0;
+	
+	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
+
+	AllInMenu[0].OptionOrEntry = 0;
+	AllInMenu[0].thing.option.IsSelected = 1;
+	AllInMenu[0].thing.option.text = "New Easy Game";
+	AllInMenu[0].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[0].thing.option.Pos[1] = 6;
+
+
+	AllInMenu[1].OptionOrEntry = 0;
+	AllInMenu[1].thing.option.IsSelected = 0;
+	AllInMenu[1].thing.option.text = "New Mediium Game";
+	AllInMenu[1].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[1].thing.option.Pos[1] = 8;
+
+	AllInMenu[2].OptionOrEntry = 0;
+	AllInMenu[2].thing.option.IsSelected = 0;
+	AllInMenu[2].thing.option.text = "New Hard Game";
+	AllInMenu[2].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[2].thing.option.Pos[1] = 10;
+
+	AllInMenu[3].OptionOrEntry = 0;
+	AllInMenu[3].thing.option.IsSelected = 0;
+	AllInMenu[3].thing.option.text = "New Right Handed Game";
+	AllInMenu[3].thing.option.Pos[0] =3; AllInMenu[1];	AllInMenu[3].thing.option.Pos[1] = 12;
+
+	AllInMenu[4].OptionOrEntry = 0;
+	AllInMenu[4].thing.option.IsSelected = 0;
+	AllInMenu[4].thing.option.text = "New Left Handed Game";
+	AllInMenu[4].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[4].thing.option.Pos[1] = 14;
+
+	AllInMenu[5].OptionOrEntry = 0;
+	AllInMenu[5].thing.option.IsSelected = 0;
+	AllInMenu[5].thing.option.text = "|Chart Of Previos Games|";
+	AllInMenu[5].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[5].thing.option.Pos[1] = 16;
+
+
+	AllInMenu[6].OptionOrEntry = 0;
+	AllInMenu[6].thing.option.IsSelected = 0;
+	AllInMenu[6].thing.option.text = "Game 1";
+	AllInMenu[6].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[6].thing.option.Pos[1] = 20;
+
+	AllInMenu[7].OptionOrEntry = 0;
+	AllInMenu[7].thing.option.IsSelected = 0;
+	AllInMenu[7].thing.option.text = "Game 2";
+	AllInMenu[7].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[7].thing.option.Pos[1] = 22;
+
+	AllInMenu[8].OptionOrEntry = 0;
+	AllInMenu[8].thing.option.IsSelected = 0;
+	AllInMenu[8].thing.option.text = "Game 3";
+	AllInMenu[8].thing.option.Pos[0] = 5; AllInMenu[1];	AllInMenu[8].thing.option.Pos[1] = 24;
+
+
+	Busy = 1;
+	ClearTerminal();
+	PrintChoiceMenu();
+	PrintOptionOrEntry(AllInMenu[0], GREEN);
+	for (int i = 1; i < OptionCnt; i++) {
+		PrintOptionOrEntry(AllInMenu[i], BLUE);
+	}
+
+
+
+
+
+	Busy = 0;
 
 }
 
@@ -1071,7 +1453,7 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 		strcpy(TempHead->word, Chert);
 		TempHead->IsItUnClear = 0;
 		TempHead->next = (Word*)malloc(sizeof(Word));
-		if (i == hard - 1&&Long==0&&hard==0&&Unclear==0) {
+		if (i == ord - 1&&Long==0&&hard==0&&Unclear==0) {
 			TempHead->next = NULL;
 		}
 		TempHead = TempHead->next;
@@ -1131,8 +1513,14 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 
 	TempHead = (Heads + NumberOfHeads - 1);
 	while (TempHead != NULL) {
+		TempHead->color = 0;
 		TempHead->height = HeadHeight;
+		TempHead->Faults = 0;
+		for (int i = 0; i < strlen(TempHead->word); i++) {
+			TempHead->TrueFalse[i] = -1;
+		}
 		TempHead = TempHead->next;
+		
 		HeadHeight--;
 	}
 
@@ -1384,20 +1772,77 @@ void HashPass(char pass[20]) {
 	
 }
 void StartWave() {
-	CreatNewLinkedList(2, 3, 3, 2, 10);
-	Busy = 1;
-	PrintLinkedList(Heads, Heads->height, WHITE, 10);
-	Busy = 0;
-	RestGameMenu();
+	wave++;
+	CreatNewLinkedList(10, 0, 0, 0, 10);
+	ResetGameMenu();
+	PrintLinkedList(Heads, WHITE);
+	ShowWave();
+	
+
 	
 }
 void GetDown() {
+	ResetGameMenu();
 	for (int i = 0; i < NumberOfHeads; i++) {
 		Word* temp = Heads + i;
+		if (temp->height >= MAxSHOWnHEIGHt) {
+			GameOver();
+		}
 		while (temp != NULL) {
 			temp->height++;
 			temp = temp->next;
 		}
 	}
+	for (int i = 0; i < NumberOfHeads; i++) {
+		PrintLinkedList(Heads + i, WHITE);
+	}
 }
+void NextWord() {
+	gotoxy((GAMEWIDTH - strlen((Heads + ListAndLock[0])->word)) / 2 + 2, (Heads + ListAndLock[0])->height);
+	printf("             ");
+	if (strlen((Heads + ListAndLock[0])->word) > 15) {
+		printf("       ");
+	}
+	if ((Heads + ListAndLock[0])->Faults == 0) {
 
+		if ((Heads + ListAndLock[0])->kind == HardWord) {
+			Score += HARDSCORE;
+		}
+		else if ((Heads + ListAndLock[0])->kind == OrdinaryWord) {
+			Score += ORDSCORE;
+		}
+		else if ((Heads + ListAndLock[0])->kind == LongWord) {
+			Score += LONGSCORE;
+
+		}
+		if ((Heads + ListAndLock[0])->IsItUnClear == 1) {
+			Score++;
+			ShowScore();
+
+		}
+		GameLog("CORRECT", GREEN);
+
+	}
+	else {
+		GameLog("WRONG", RED);
+
+
+	}
+	PrintFace(1);
+	Word* temp;
+	temp = (Heads + ListAndLock[0]);
+	*(Heads + ListAndLock[0]) = *((Heads + ListAndLock[0])->next);
+	if ((Heads + ListAndLock[0]) == NULL) {
+		ListAndLock[0]++;
+	}
+	ListAndLock[1] = 0;
+	ShowScore();
+
+
+
+}
+void GameOver() {
+	exit(0);
+	DoColorize = 1;
+
+}
