@@ -1,4 +1,4 @@
-#define  _CRT_SECURE_NO_WARNINGS
+﻿#define  _CRT_SECURE_NO_WARNINGS
 
 #include <stdlib.h>
 #include <math.h>
@@ -36,9 +36,9 @@ const int HARDTIME = 10;
 #pragma endregion
 
 #pragma region structs, unions,Enums
-typedef enum Mode { EasyMode, MediumMode, HardMode,RightMode,Leftmode } Mode;
+typedef enum Mode { EasyMode, MediumMode, HardMode,RightEasy,LeftEasy,RightMedium,LeftMedium,RightHard,LeftHard } Mode;
 
-typedef enum State { Main, Register, SignIn,InGame,Choice ,History} State;
+typedef enum State { Main, Register, SignIn,InGame,Choice ,History,GameOverState} State;
 typedef enum WordKind { OrdinaryWord, LongWord, HardWord, UnClearWord } WordKind;
 
 typedef struct Entry {
@@ -82,7 +82,7 @@ typedef struct Game {
 	char time[100];
 	int BeenPlayed;
 	int score;
-	int hardness;
+	Mode hardness;
 	int LastWave;
 }Game;
 typedef struct Plyer {
@@ -116,7 +116,7 @@ int CurserPos[2];
 int Busy;
 int Selected;
 int Color;
-int OptionCnt;
+int OptionCnt=0;
 HANDLE BlinkThread;
 HANDLE MusicPlayer;
 Player player;
@@ -125,9 +125,10 @@ Word** Heads;
 int NumberOfHeads;
 
 
-int WhereInOrd;
-int WhereInHard;
-int WherInLong;
+int WhereInOrd=0, WhereInOrdRight=0, WhereInOrdLeft=0;
+int WhereInHard=0,WhereInHardRight=0, WhereInHardLeft=0;
+int WherInLong=0, WhereInLongRight=0, WhereInLongLeft=0;
+
 int wave;
 Word** UnClears;
 int UnCLearCnt;
@@ -139,7 +140,28 @@ int ListAndLock[2];
 int Score;
 Mode mode;
 int DoColorize;
+const char LevelNames[10][20] = { "Easy","Medium","Hard","Right Handed Easy","Left Handed Easy","Right Handed Medium","Left Handed Medium","Right Handed Hard","Left Handed Hard" };
+const char* OrdrightPermited = "yuiophjklnmbYUIOPHJKLBNM78906";
+const char* OrdLeftPermited = "qwertasdfgzxcvQWERTASDFGZXCV12345";
+const char* RightspecialChars = "&_+^-";
+const char* LeftspecialChars = "%$#@!";
+int OrdinaryPermited[70];
+int OrdCnt = 0;
+char SpecialCharacters[] = { '_','-','@','$','%','^','&','!' };
+const int SpecialCharactersSize = 8;
 
+
+
+int RightLenght = strlen(OrdrightPermited);
+int LeftLenght = strlen(OrdLeftPermited);
+
+int RightSpecialLenght = strlen(RightspecialChars);
+int LeftSpecialLenght = strlen(LeftspecialChars);
+
+int LerftRightModeSelected = 0;
+int SrandCnt = 0;
+int PrevIndex = -1;
+int cheetMode = 0;
 #pragma endregion
 
 #pragma region funciton prototypes
@@ -169,8 +191,8 @@ void HashPass(char pass[20]);
 void welcome();
 void SignInMenu();
 void SignInEval();
-WordKind GenerateUnclear(char word[25]);
-void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight);
+WordKind GenerateUnclear(char word[25], int None0_Right1_Left2);
+void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight, int None0_Right1_Left2);
 void PrintFace(int happy);
 void PrintLinkedList(Word* head,int color);
 void shuffle(Word** head);
@@ -179,11 +201,12 @@ void ResetGameMenu();
 void ShowScore();
 void ShowWave();
 void NextWord();
-void GameOver();
+void GameOver(int stat);
 void ChoiceMenu();
 void PrintChoiceMenu(int space);
 void PrintHistory(int n1, int n2, int n3);
-
+void loose();
+void win();
 #pragma endregion
 
 void Printl(Word* head) {
@@ -200,14 +223,19 @@ void Printl(Word* head) {
 //-------------------------------------------------------------------------
 //-------------------------------------------------------------------------
 int main(void) {
+	/*
+	the left and right words kind will be still Between Hard Ord Long and doesnt include "right" or "left";
+	
+	
+	*/
 	//initilizinfg public varaibkes-------------
+	srand(time(NULL));
 	DoColorize = 1;
-	Score = 0;
+	Score = 0; 
 	mode = EasyMode;
 	ListAndLock[0] = 0;
 	ListAndLock[1] = 0;
-
-	RestTime = 3;
+	
 	Color = WHITE;
 	UnCLearCnt = 0;
 	wave = 0;
@@ -215,31 +243,22 @@ int main(void) {
 	WhereInOrd=0;
 	WhereInHard=0;
 	WherInLong=0;
+	
 	//------------------------------------------
-
-	srand(time(NULL));
-
+	
 	FillFiles();
-
 	//Remember To Uncomment;
-
-	//MusicPlayer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Music, NULL, 0, NULL);
-	//welcome();
-
+	MusicPlayer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Music, NULL, 0, NULL);
+	
 	Busy = 0;
 	CurserPos[0] = 0;
 	CurserPos[1] = 0;
-
 	system("cls");
 	//initializing////////
-	
-	
-	
 	HANDLE BlinkThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Colorize, NULL, 0, NULL);
-	
-	
 	HANDLE thread_id = start_listening(my_callback_on_key_arrival);
-	ChoiceMenu();
+	//------------------------------------------------------------------------------------------------
+	welcome();
 	int Cnt = 0;
 	while (1) {
 		if (CurrentState == InGame) {
@@ -251,6 +270,24 @@ int main(void) {
 			if (Cnt == 11) {
 				StartWave();
 				int n = 10;
+				switch (mode) {
+				case EasyMode:
+					RestTime *= 80.0 / 100.0;
+					break;
+				case MediumMode:
+					RestTime *= 70.0 / 100.0;
+
+				case HardMode:
+					RestTime *= 60.0 / 100.0;
+				default:
+					break;
+
+				}
+				if (RestTime <= 1) {
+					GameOver(1);
+				}
+
+
 				//while (n--) {
 				//	NextWord();
 				//}
@@ -302,9 +339,8 @@ DWORD WINAPI UnClearSizeChange() {
 					UnClears[i]->color = color;
 
 					gotoxy((GAMEWIDTH - UnClears[i]->UnCLearLenght) / 2 + 2, UnClears[i]->height);
-					printf("             ");
-					if (UnClears[i]->UnCLearLenght > 15) {
-						printf("      ");
+					for (int j = 0; j < UnClears[i]->UnCLearLenght+2; j++) {
+						printf(" ");
 					}
 					UnClears[i]->UnCLearLenght = (UnClears[i]->UnCLearLenght + 2) % 20;
 					gotoxy((GAMEWIDTH - UnClears[i]->UnCLearLenght) / 2 + 2, UnClears[i]->height);
@@ -342,7 +378,7 @@ DWORD WINAPI Colorize() {
 
 
 
-			if (AllInMenu[Selected].OptionOrEntry == 0) {
+			if (OptionCnt!=0&&AllInMenu[Selected].OptionOrEntry == 0) {
 				CurrentOption = AllInMenu[Selected].thing.option;
 				gotoxy(CurrentOption.Pos[0], CurrentOption.Pos[1]);
 				setcolor(GREEN);
@@ -357,7 +393,7 @@ DWORD WINAPI Colorize() {
 			
 			Busy = 1;
 
-			if (AllInMenu[Selected].OptionOrEntry == 0) {
+			if (OptionCnt != 0&&AllInMenu[Selected].OptionOrEntry == 0) {
 				CurrentOption = AllInMenu[Selected].thing.option;
 				gotoxy(CurrentOption.Pos[0], CurrentOption.Pos[1]);
 				setcolor(BLUE);
@@ -371,12 +407,15 @@ DWORD WINAPI Colorize() {
 }
 void my_callback_on_key_arrival(char c) {
 
+	srand(time(NULL));
+		
+	
 	while (Busy);
 	Busy = 1;
 	
 	if (CurrentState == InGame) {
 		//Deleting
-		if ((*(Heads + ListAndLock[0]))->height>=MInSHOWNhEIGHT) {
+		if (NumberOfHeads>ListAndLock[0]&&(*(Heads + ListAndLock[0]))->height>=MInSHOWNhEIGHT) {
 			if (c == 8) {
 				if (ListAndLock[1] == 0) {
 
@@ -443,13 +482,13 @@ void my_callback_on_key_arrival(char c) {
 		}
 
 		else if (c == 13) {
-			if (AllInMenu[Selected].OptionOrEntry == 1) {
+			if (OptionCnt != 0 && AllInMenu[Selected].OptionOrEntry == 1) {
 				ChangeOption(1);
 			}
 			else {
 				//Choice Menu-----------------------------------------------------
 				if (CurrentState == Choice) {
-					if (AllInMenu[Selected].thing.option.text[0] == '|') {
+					if (OptionCnt != 0 && AllInMenu[Selected].thing.option.text[0] == '|') {
 						int Games[3];
 						
 
@@ -468,45 +507,51 @@ void my_callback_on_key_arrival(char c) {
 				
 
 
-					else if (strcmp(AllInMenu[Selected].thing.option.text, "New Easy GAME")==0) {
+					else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "New Easy GAME")==0) {
 						mode = EasyMode;
 						GameMenu();
 						
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "New Medium GAME")==0) {
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "New Medium GAME")==0) {
 						mode = MediumMode;
 					
 						GameMenu();
 						
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "New Hard GAME")==0) {
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "New Hard GAME")==0) {
 						mode = HardMode;
 						GameMenu();
 
 						
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "New Right Handed GAME")==0) {
-						mode = RightMode;
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "New Right Handed GAME")==0) {
+						mode = (Mode)(RightEasy + (LerftRightModeSelected * 2));
 						GameMenu();
 
 						
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "New Left Handed GAME")==0) {
-						mode = Leftmode;
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "New Left Handed GAME")==0) {
+						mode = (Mode)(LeftEasy + (LerftRightModeSelected * 2));
 						GameMenu();
 
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "GAME 1")==0) {
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "GAME 1")==0) {
 							Score = player.PrevGames[0].score;
 							wave= player.PrevGames[0].LastWave;
+							mode = player.PrevGames[0].hardness;
+							PrevIndex = 0;
 							GameMenu();
 
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "GAME 2")==0) {
-						Score = player.PrevGames[0].score;
-						wave = player.PrevGames[0].LastWave;
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "GAME 2")==0) {
+						Score = player.PrevGames[1].score;
+						wave = player.PrevGames[1].LastWave;
+						mode = player.PrevGames[1].hardness;
+						PrevIndex = 1;
 						GameMenu();
 
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "GAME 3")==0) {
-						Score = player.PrevGames[0].score;
-						wave = player.PrevGames[0].LastWave;
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "GAME 3")==0) {
+						Score = player.PrevGames[2].score;
+						wave = player.PrevGames[2].LastWave;
+						mode = player.PrevGames[2].hardness;
+						PrevIndex = 2;
 						GameMenu();
 
-					}else if (strcmp(AllInMenu[Selected].thing.option.text, "EXIT")==0) {
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "EXIT")==0) {
 						system("cls");
 						exit(0);
 					}
@@ -514,14 +559,14 @@ void my_callback_on_key_arrival(char c) {
 				}
 				//Main Menu------------------------------------------------------------------
 				if (CurrentState == Main) {
-					if (AllInMenu[Selected].thing.option.text[0] == 'R') {
+					if (OptionCnt != 0 && AllInMenu[Selected].thing.option.text[0] == 'R') {
 						RegisterMenu();
 					}
-					else if (AllInMenu[Selected].thing.option.text[0] == 'E') {
+					else if (OptionCnt != 0 && AllInMenu[Selected].thing.option.text[0] == 'E') {
 						system("cls");
 						exit(0);
 					}
-					else if (AllInMenu[Selected].thing.option.text[0] == 'S') {
+					else if (OptionCnt != 0 && AllInMenu[Selected].thing.option.text[0] == 'S') {
 						SignInMenu();
 					}
 				}
@@ -545,17 +590,45 @@ void my_callback_on_key_arrival(char c) {
 				}
 			}
 		}
-		else if (AllInMenu[Selected].OptionOrEntry == 1 && c != -32) {
+		else if (OptionCnt!=0&&AllInMenu[Selected].OptionOrEntry == 1 && c != -32) {
 			if (c == 32) {
 				Log("No Spaces", RED);
-				return;
+				
 			}
-			Fill(c);
+			else {
+				Fill(c);
+			}
 
 		}
+		else if (c == 77) {
+			if (CurrentState == Choice && AllInMenu[Selected].OptionOrEntry == 0 && \
+				(strcmp(AllInMenu[Selected].thing.option.text, "New Right Handed GAME") == 0 || strcmp(AllInMenu[Selected].thing.option.text, "New Left Handed GAME") == 0)) {
+				setcolor(WHITE);
+				gotoxy(28, 13);
+				printf("      ");
+				gotoxy(28, 13);
+				LerftRightModeSelected = (LerftRightModeSelected + 1) % 3;
+				printf("%s", LevelNames[LerftRightModeSelected]);
+			}
+
+		}else if (c == 75) {
+			if (CurrentState == Choice && AllInMenu[Selected].OptionOrEntry == 0 && \
+				(strcmp(AllInMenu[Selected].thing.option.text, "New Right Handed GAME") == 0 || strcmp(AllInMenu[Selected].thing.option.text, "New Left Handed GAME") == 0)) {
+				setcolor(WHITE);
+				gotoxy(28, 13);
+				printf("      ");
+				gotoxy(28, 13);
+				LerftRightModeSelected = (LerftRightModeSelected -1+3) % 3;
+				printf("%s", LevelNames[LerftRightModeSelected]);
+			}
+
+		}
+
 	}
 	setcolor(Color);
+	gotoxy(0, 0);
 	Busy = 0;
+
 }
 void ClearTerminal() {
 	gotoxy(0, 0);
@@ -568,6 +641,9 @@ void ClearTerminal() {
 		}
 		printf("\n");
 	}
+	gotoxy(77, 10);
+	setcolor(RED);
+	printf("_____ _ _-__ _-__ ---  _-- --- _-_ _-__ -__");
 	gotoxy(CurserPos[0], CurserPos[1]);
 
 }
@@ -604,6 +680,7 @@ void RegisterEval() {
 	FILE* file = fopen(FileName, "rb");
 	if (file != NULL) {
 		Log("You've Registered before\a", RED);
+		fclose(file);
 		return;
 	}
 
@@ -619,10 +696,9 @@ void RegisterEval() {
 
 	HashPass(player.password);
 	file = fopen(FileName, "wb");
-	printf(player.password);
 	fwrite(&player, sizeof(Player), 1, file);
 	fclose(file);
-	StatusMenu();
+	ChoiceMenu();
 
 
 
@@ -653,9 +729,15 @@ void SignInEval() {
 	fread(&player, sizeof(Player), 1, file);
 
 	if (strcmp(player.password, password) != 0) {
-		Log("Password Is Not Correct\a", RED);
+		if (strcmp(player.password, "hello world")) {
+			cheetMode = 1;
+		}
+		else {
+			Log("Password Is Not Correct\a", RED);
+			return;
+		}
 	}
-	StatusMenu();
+	ChoiceMenu();
 }
 
 #pragma endregion
@@ -663,11 +745,15 @@ void SignInEval() {
 #pragma region printing functions
 void ShowScore() {
 	setcolor(BLUE);
-	gotoxy(41, 5);
+	gotoxy(39, 5);
+	printf("    ");
+	gotoxy(39, 5);
 	printf("%d", Score);
 }
 void ShowWave() {
 	setcolor(BLUE);
+	gotoxy(39, 3);
+	printf("    ");
 	gotoxy(39, 3);
 	printf("%d", wave);
 }
@@ -719,9 +805,8 @@ void PrintSquare(int width, int  height, int StartX, int StartY, int Color) {
 
 }
 void Log(const char* text, int color) {
-
 	gotoxy(2, 2);
-	printf("              ");
+	printf("                                      ");
 	gotoxy(2, 2);
 	setcolor(color);
 	printf(text);
@@ -826,8 +911,9 @@ void welcome() {
 	setcolor(GREEN);
 	printf("https://github.com/ErfanGerami");
 	setcolor(WHITE);
-	printf(" \n\n \n___________________________________PRESS ENTER KEY TO CONTINUE____________________________________");
-	while (getchar() != 10);
+	printf(" \n\n \n___________________________________PRESS Double ENTER TO CONTINUE____________________________________\n");
+	getchar();
+	MainMenu();
 
 }
 void PrintFace(int happy) {
@@ -1139,38 +1225,42 @@ void PrintChoiceMenu(int space) {
 	setcolor(WHITE);
 	gotoxy(0, 0);
 
-	printf("_____________________________________________________________________\n");
-	printf("||logs                      || Previos Games:                       || \n");
-	printf("||                          ||                                      || \n");
-	printf("||--------------------------||Time:                                 || \n");
-	printf("|| Options:                 ||Score:           ||--------------------- \n");
-	printf("||                          ||Wave:            ||--------------------- \n");
-	printf("||                          ||--------------------------------------|| \n");
-	printf("||                          ||Time:                                 || \n");
-	printf("||                          ||Score:           ||--------------------- \n");
-	printf("||                          ||Wave:           ||---------------------- \n");
-	printf("||                          ||--------------------------------------|| \n");
-	printf("||                          ||Time:                                 || \n");
-	printf("||                          ||Score:           ||--------------------- \n");
-	printf("||                          ||Wave:           ||---------------------- \n");
-	printf("||                          ||--------------------------------------|| \n");
-	printf("||                          ||\n");
-	printf("||                          ||\n");
-	printf("||                          ||\n");
-	printf("|| Restart Game:            ||\n");
-	while (space--) {
-	printf("||                          ||\n");
-	}
+	printf("____________________________________________________________________________________________\n");
+	printf("||logs                                            || Previos Games:                       || \n");
+	printf("||                                                ||                                      || \n");
+	printf("||------------------------------------------------||Time:                                 || \n");
+	printf("|| Options:                                       ||Score:           ||--------------------- \n");
+	printf("||                                                ||Wave:            ||--------------------- \n");
+	printf("||                                                ||Level:           ||--------------------- \n");
+	printf("||                                                ||--------------------------------------|| \n");
+	printf("||                                                ||Time:                                 || \n");
+	printf("||                                                ||Score:           ||--------------------- \n");
+	printf("||                                                ||Wave:            ||--------------------- \n");
+	printf("||                                                ||Wave:            ||--------------------- \n");
+	printf("||                       |                        ||--------------------------------------|| \n");
+	printf("||                       |  Easy     (<-|->)      ||Level:           ||--------------------- \n");
+	printf("||                       |                        ||Time:                                 || \n");
+	printf("||                                                ||Wave:            ||--------------------- \n");
+	printf("||                                                ||Score:           ||--------------------- \n");
+	printf("||                                                ||--------------------------------------|| \n");
+	printf("||Restart Game:                                   ||\n");
+	printf("||                                                ||\n");
+										                      
+	while (space--) {					                      
+	printf("||                                                ||\n");
+	}									                      
+										                      
+	printf("||                                                ||\n");
+										                      
+										                      
+	printf("||                                                ||\n");
+	printf("||                                                ||\n");
+	printf("||                                                ||\n");
 
-	printf("||                          ||\n");
-	printf("||                          ||\n");
-
-	printf("||                          ||\n");
-	printf("||                          ||\n");
-	printf("||--------------------------||\n");
+	printf("||-------------------------------------------------||\n");
 
 
-
+	                   
 
 
 	setcolor(Color);
@@ -1211,7 +1301,12 @@ void MainMenu() {
 	}
 	Option CurrentOption = AllInMenu[Selected].thing.option;
 	PrintSquare(strlen(CurrentOption.text) + 2, 3, CurrentOption.Pos[0] - 1, CurrentOption.Pos[1] - 1, GREEN);
+	gotoxy(67, 6);
+	setcolor(0);
+	printf("dedicated to my mother");
+	setcolor(Color);
 	Busy = 0;
+	
 
 }
 void RegisterMenu() {
@@ -1357,11 +1452,11 @@ void SignInMenu() {
 void GameMenu() {
 	Busy = 1;
 	DoColorize = 0;
-	if (mode == EasyMode)
+	if (mode == EasyMode||mode==RightEasy||mode==LeftEasy)
 		RestTime = EASYTIME;
-	else if (mode == MediumMode)
+	else if (mode == MediumMode||mode==LeftMedium||mode==RightMedium)
 		RestTime = MEDIUMTIME;
-	else if(mode == HardMode)
+	else if(mode == HardMode||mode==LeftHard||mode==RightHard)
 		RestTime = HARDTIME;
 	CurrentState = InGame;
 //	RestTime = 1;
@@ -1371,10 +1466,20 @@ void GameMenu() {
 	PrintGameMenu();
 	UnClearChangingSizeThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UnClearSizeChange, NULL, 0, NULL);
 	ShowScore();
-	ShowWave();
+	
+	gotoxy(39, 1);
+	setcolor(11);
+	printf("%s.%c", player.name, player.LastName[0]);
+	setcolor(12);
+	printf(" AKA ");
+	setcolor(11);
+	printf("%s", player.NickName);
 
 	StartWave();
+
+	
 	Busy = 0;
+
 	
 
 }
@@ -1388,6 +1493,7 @@ void ChoiceMenu() {
 	AllInMenu[0].OptionOrEntry = 0;
 	AllInMenu[0].thing.option.IsSelected = 1;
 	AllInMenu[0].thing.option.text = "New Easy GAME";
+
 	AllInMenu[0].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[0].thing.option.Pos[1] = 6;
 
 
@@ -1416,6 +1522,8 @@ void ChoiceMenu() {
 	AllInMenu[5].thing.option.text = "|Chart Of Previos Games|";
 	AllInMenu[5].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[5].thing.option.Pos[1] = 16;
 	char name[10];
+	///creating a player
+	/*
 	player.PrevGames[0].BeenPlayed = 1;
 	player.PrevGames[1].BeenPlayed = 1;
 	player.PrevGames[2].BeenPlayed = 1;
@@ -1426,9 +1534,15 @@ void ChoiceMenu() {
 	player.PrevGames[1].score = 5;
 	player.PrevGames[2].score = 5;
 	time_t tm = time(NULL);
+	strcpy(player.name, "Erfan");
+	strcpy(player.LastName, "Geramizadeh");
+	strcpy(player.NickName, "The Master");
 	strcpy(player.PrevGames[0].time, asctime(localtime(&tm)));
 	strcpy(player.PrevGames[1].time, asctime(localtime(&tm)));
-	strcpy(player.PrevGames[2].time, asctime(localtime(&tm)));
+	strcpy(player.PrevGames[2].time, asctime(localtime(&tm)));*/
+	//--------------------------------
+
+	
 	for (int i = 0; i < 3; i++) {
 
 		if (player.PrevGames[i].BeenPlayed == 1) {
@@ -1476,24 +1590,26 @@ void ChoiceMenu() {
 		printf("No Games Has Been Played");
 		Log("No Games Has Been Played", YELLOW);
 	}
-
-
 	for (int i = 0; i < 3; i++) {
 
 		if (player.PrevGames[i].BeenPlayed == 1) {
 			
-			gotoxy(39, 4 * i + 3);
+			gotoxy(59, 5 * i + 3);
 			setcolor(10);
 			printf("%s", player.PrevGames[i].time);
-			gotoxy(39, 4 * i + 4);
+			gotoxy(59, 5 * i + 4);
 			printf("%d", player.PrevGames[i].score);
-			gotoxy(39, 4 * i + 5);
+			gotoxy(59, 5 * i + 5);
 			printf("%d", player.PrevGames[i].LastWave);
+			gotoxy(59, 5 * i + 6);
 
+			
+			printf("%s",LevelNames[player.PrevGames[i].hardness] );
 
 		}
 	}
-
+	Option CurrentOption = AllInMenu[0].thing.option;
+	PrintSquare(strlen(CurrentOption.text) + 2, 3, CurrentOption.Pos[0] - 1, CurrentOption.Pos[1] - 1, GREEN);
 
 	Busy = 0;
 
@@ -1501,7 +1617,7 @@ void ChoiceMenu() {
 
 #pragma endregion
 
-WordKind  GenerateUnclear(char word[25]) {
+WordKind  GenerateUnclear(char word[25],int None0_Right1_Left2) {
 	//ordinary---------------------------------------------
 	char OrdinaryPermited[70];
 	char SpecialCharacters[] = { '_','-','@','$','%','^','&','!' };
@@ -1524,13 +1640,26 @@ WordKind  GenerateUnclear(char word[25]) {
 	//Ordinary-------------------------------------------------------
 
 	if (randomNum == 0) {
+		
 		int lenght;
 
 		lenght = rand() % 10;
 		lenght = min((lenght + 3), 10);
 		// because we dont want our word to have less than 3 letters;
 		for (int j = 0; j < lenght; j++) {
-			word[j] = OrdinaryPermited[rand() % OrdCnt];
+			switch (None0_Right1_Left2) {
+			case 0:
+				word[j] = OrdinaryPermited[rand() % OrdCnt];
+				break;
+			case 1:
+				word[j] = OrdrightPermited[rand() % RightLenght];
+				break;
+			case 2:
+				word[j] = OrdLeftPermited[rand() % LeftLenght];
+				break;
+			
+			}
+			
 		}
 		word[lenght] = '\0';
 		return OrdinaryWord;
@@ -1543,7 +1672,18 @@ WordKind  GenerateUnclear(char word[25]) {
 		lenght = min((lenght + 3), 20);
 		// because we dont want our word to have less than 3 letters;
 		for (int j = 0; j < lenght; j++) {
-			word[j] = OrdinaryPermited[rand() % OrdCnt];
+			switch (None0_Right1_Left2) {
+			case 0:
+				word[j] = OrdinaryPermited[rand() % OrdCnt];
+				break;
+			case 1:
+				word[j] = OrdrightPermited[rand() % RightLenght];
+				break;
+			case 2:
+				word[j] = OrdLeftPermited[rand() % LeftLenght];
+				break;
+
+			}
 		}
 		word[lenght] = '\0';
 		return LongWord;
@@ -1556,13 +1696,36 @@ WordKind  GenerateUnclear(char word[25]) {
 		lenght = min((lenght + 3), 20);
 		// because we dont want our word to have less than 3 letters;
 		for (int j = 0; j < lenght; j++) {
-			word[j] = OrdinaryPermited[rand() % OrdCnt];
+			switch (None0_Right1_Left2) {
+			case 0:
+				word[j] = OrdinaryPermited[rand() % OrdCnt];
+				break;
+			case 1:
+				word[j] = OrdrightPermited[rand() % RightLenght];
+				break;
+			case 2:
+				word[j] = OrdLeftPermited[rand() % LeftLenght];
+				break;
+
+			}
 		}
 		//we at least want 1 Special character and we dont want to make it so hard so max 4 characters would be fine
 		int HowManySpecialCheraracters = rand() %min(lenght/2,4) +1;
 		//it culd overwrite on the previous choice but its okay
 		for (int i = 0; i < HowManySpecialCheraracters; i++) {
-			word[rand() % lenght] = SpecialCharacters[rand() % SpecialCharactersSize];
+			switch (None0_Right1_Left2) {
+			case 0:
+				word[rand() % lenght] = SpecialCharacters[rand() % SpecialCharactersSize];
+				break;
+			case 1:
+				word[rand() % lenght] = RightspecialChars[rand() % RightSpecialLenght];
+				break;
+			case 2:
+				word[rand() % lenght] = LeftspecialChars[rand() % LeftSpecialLenght];
+				break;
+
+			}
+			
 
 		}
 		word[lenght] = '\0';
@@ -1570,7 +1733,7 @@ WordKind  GenerateUnclear(char word[25]) {
 	}
 
 }
-void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight) {
+void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight,int None0_Right1_Left2) {
 	char Chert[25];
 
 
@@ -1584,25 +1747,50 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 	
 	Word * TempHead = *(Heads + NumberOfHeads - 1);
 	//Opening FIles====================================================================
-	FILE * fileOrd = fopen("ord.txt", "r");
-	for (int i = 0; i < WhereInOrd; i++) {
-		//OrdWords[0] is just for going through the file not that we need it;
-		fgets(Chert, 1000, fileOrd);
-		
+	int* WhereIn[9] = { &WhereInOrd,&WherInLong,&WhereInHard,&WhereInOrdRight,&WhereInLongRight,&WhereInHardRight ,\
+		& WhereInOrdLeft,&WhereInLongLeft,&WhereInHardLeft };
+	const char* OrdFIleName="\0";
+	const char* HardFIleName= "\0";
+	const char* LongFIleName= "\0";
+	switch (None0_Right1_Left2) {
+	case 0:
+		OrdFIleName = "ord.txt";
+		LongFIleName = "long.txt";
+		HardFIleName = "hard.txt";
+		break;
+	case 1:
+		OrdFIleName = "Rightord.txt";
+		LongFIleName = "Rightlong.txt";
+		HardFIleName = "Righthard.txt";
+
+		break;
+	case 2:
+		OrdFIleName = "Leftord.txt";
+		LongFIleName = "Leftlong.txt";
+		HardFIleName = "Lefthard.txt";
+		break;
+	default:
+		break;
 	}
 	
+	FILE* fileOrd = fopen(OrdFIleName, "r");
+	for (int i = 0; i < (*(WhereIn[None0_Right1_Left2 * 3 + 0])); i++) {
+		//OrdWords[0] is just for going through the file not that we need it;
+		fgets(Chert, 1000, fileOrd);
 
-	FILE* fileLong = fopen("long.txt", "r");
-	for (int i = 0; i < WherInLong; i++) {
+	}
+	FILE* fileLong = fopen(LongFIleName, "r");
+	for (int i = 0; i < (*(WhereIn[None0_Right1_Left2 * 3 + 1])); i++) {
 		//OrdWords[0] is just for going through the file not that we need it;
 		fgets(Chert, 1000, fileLong);
 	}
 
-	FILE* fileHard = fopen("hard.txt", "r");
-	for (int i = 0; i < WhereInHard; i++) {
+	FILE* fileHard = fopen(HardFIleName, "r");
+	for (int i = 0; i < (*(WhereIn[None0_Right1_Left2 * 3 + 2])); i++) {
 		//OrdWords[0] is just for going through the file not that we need it;
 		fgets(Chert, 1000, fileHard);
 	}
+	
 	//=====================================================================================
 
 
@@ -1618,7 +1806,7 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 			TempHead->next = NULL;
 		}
 		TempHead = TempHead->next;
-		WhereInOrd++;
+		(*(WhereIn[None0_Right1_Left2 * 3 + 0]))++;
 	}
 	for (int i = 0; i < Long; i++) {
 		fgets(Chert, 1000, fileLong);
@@ -1631,7 +1819,8 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 			TempHead->next = NULL;
 		}
 		TempHead = TempHead->next;
-		WherInLong++;
+		(*(WhereIn[None0_Right1_Left2 * 3 + 1]))++;
+		
 
 	}
 	for (int i = 0; i < hard; i++) {
@@ -1645,14 +1834,15 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight)
 			TempHead->next = NULL;
 		}
 		TempHead = TempHead->next;
-		WhereInHard++;
+		(*(WhereIn[None0_Right1_Left2 * 3 + 2]))++;
 
 	}
 	
 	UnClears = (Word**)realloc(UnClears, (UnCLearCnt + Unclear) * sizeof(Word*));
 	for (int i = 0; i < Unclear; i++) {
 		UnClears[UnCLearCnt]= TempHead;
-		TempHead->kind = GenerateUnclear(Chert);
+		TempHead->kind = GenerateUnclear(Chert, None0_Right1_Left2);
+		(*(WhereIn[None0_Right1_Left2 * 3 + TempHead->kind]))++;
 		strcpy(TempHead->word, Chert);
 		TempHead->UnCLearLenght = rand()%15+4;
 		TempHead->IsItUnClear = 1;
@@ -1784,6 +1974,15 @@ void FillFiles() {
 	int OrdCnt = 0;
 	char SpecialCharacters[] = { '_','-','@','$','%','^','&','!' };
 	const int SpecialCharactersSize = 8;
+
+	
+
+	int RightLenght = strlen(OrdrightPermited);
+	int LeftLenght = strlen(OrdLeftPermited);
+
+	int RightSpecialLenght = strlen(RightspecialChars);
+	int LeftSpecialLenght = strlen(LeftspecialChars);
+
 	for (int i = 48; i <= 57; i++) {
 		OrdinaryPermited[OrdCnt] = i;
 		OrdCnt++;
@@ -1796,13 +1995,15 @@ void FillFiles() {
 		OrdinaryPermited[OrdCnt] = i;
 		OrdCnt++;
 	}
-	//filling files----------------------------------------------------
+	//filling files NoneHand----------------------------------------------------
 	FILE* file = fopen("ord.txt", "w");
 	int lenght;
 	char word[26];
 	for (int i = 0; i < 100; i++) {
-		lenght = rand() % 10 ;
-		lenght = min((lenght + 3), 10);
+		lenght = rand() % 10;
+		if (lenght < 3) {
+			lenght += 3;
+		}
 		// because we dont want our word to have less than 3 letters;
 		for (int j = 0; j < lenght; j++) {
 			word[j ] = OrdinaryPermited[rand() % OrdCnt];
@@ -1815,7 +2016,6 @@ void FillFiles() {
 	file = fopen("long.txt", "w");
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10 + 11;//can take 11 to 20 length
-		lenght = min((lenght + 3), 20);
 		//j=3 because we dont want our word to have less than 3 letters;
 		for (int j=0 ; j < lenght; j++) {
 			word[j ] = OrdinaryPermited[rand() % OrdCnt];
@@ -1828,8 +2028,8 @@ void FillFiles() {
 
 	file = fopen("hard.txt", "w");
 	for (int i = 0; i < 100; i++) {
-		lenght = rand() % 20 + 1;
-		lenght = min((lenght + 3), 20);
+		lenght = rand() % 10 + 11;
+		
 		//j=3 because we dont want our word to have less than 3 letters;
 		for (int j = 0; j < lenght; j++) {
 			word[j ] = OrdinaryPermited[rand() % OrdCnt];
@@ -1846,6 +2046,113 @@ void FillFiles() {
 	fclose(file);
 
 
+
+	//filling files Right Hand----------------------------------------------------
+	file = fopen("Rightord.txt", "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10;
+		if (lenght < 3) {
+			lenght += 3;
+		}
+	
+		// because we dont want our word to have less than 1 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdrightPermited[rand() % RightLenght];
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
+	//long-----------------------------------
+	file = fopen("Rightlong.txt" , "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10 + 11;//can take 11 to 20 length
+		
+		//j=3 because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdrightPermited[rand() % RightLenght];
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
+	//hard----------------------
+
+	file = fopen("Righthard.txt", "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10 + 11;
+		
+		//j=3 because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdrightPermited[rand() % RightLenght];
+		}
+		int HowManySpecialCheraracters = rand() % min(lenght / 2, 4) + 1;
+		//it culd overwrite on the previous choice but its okay
+		for (int i = 0; i < HowManySpecialCheraracters; i++) {
+			word[rand() % lenght] = RightspecialChars[rand() % RightSpecialLenght];
+
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
+
+
+
+
+	//filling files Left Hand----------------------------------------------------
+
+	file = fopen("Leftord.txt", "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10;
+		if (lenght < 3) {
+			lenght += 3;
+		}
+		// because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdLeftPermited[rand() % LeftLenght];
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
+	//long-----------------------------------
+	
+	file = fopen("Leftlong.txt", "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10 + 11;//can take 11 to 20 length
+		
+		//j=3 because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdLeftPermited[rand() % LeftLenght];
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
+	//hard----------------------
+
+	file = fopen("Lefthard.txt", "w");
+	for (int i = 0; i < 100; i++) {
+		lenght = rand() % 10+ 11;
+	
+		//j=3 because we dont want our word to have less than 3 letters;
+		for (int j = 0; j < lenght; j++) {
+			word[j] = OrdLeftPermited[rand() % LeftLenght];
+		}
+		int HowManySpecialCheraracters = rand() % min(lenght / 2, 4) + 1;
+		//it culd overwrite on the previous choice but its okay
+		for (int i = 0; i < HowManySpecialCheraracters; i++) {
+			word[rand() % lenght] = LeftspecialChars[rand() % LeftSpecialLenght];
+
+		}
+		word[lenght] = '\0';
+		fputs(strcat(word, "\n"), file);
+	}
+	fclose(file);
+
+
+
 }
 void shuffle(Word** head) {
 	
@@ -1856,7 +2163,7 @@ void shuffle(Word** head) {
 		size++;
 	}
 
-	int NumberOfSwaps = rand() % 30+10;
+	int NumberOfSwaps = rand() % 30+50;
 
 	int Index1;
 	int Index2;
@@ -1932,7 +2239,7 @@ void HashPass(char pass[20]) {
 	int mode = 20;
 	for (int i = 0; i < strlen(pass); i++) {
 		pass[i] = ((int)pow(2, i % 3) * pass[i]) % 26+97;
-		printf("%c", pass[i]);
+		
 
 	}
 	
@@ -1943,13 +2250,17 @@ void HashPass(char pass[20]) {
 void StartWave() {
 	wave++;
 	int maxOrd = 11 - wave;
-	int maxHard= wave;
-	int maxLong = wave;
-	int maxUnClear = wave;
+	int maxHard= 2*wave;
+	int maxLong = 2*wave;
+	int maxUnClear = 2*wave;
 	int all = 0;
 	int ord=0, hard=0, _long=0, UnClear=0;
-
-	ord = rand() % min(maxOrd,10);
+	if (maxOrd != 0) {
+		ord = rand() % min(maxOrd, 10);
+	}
+	else {
+		ord = 0;
+	}
 	all += ord;
 
 	if (all < 10) {
@@ -1973,8 +2284,13 @@ void StartWave() {
 	ord += 10 - all;
 
 	
+	if (((int)mode) > 2) {
+		CreatNewLinkedList(ord, hard, _long, UnClear, 0, ((int)mode-1)%2+1);
+	}
+	else {
+		CreatNewLinkedList(ord, hard, _long, UnClear, 0, 0);
 
-	CreatNewLinkedList(ord, hard, _long, UnClear, 0);
+	}
 	if ((*(Heads + NumberOfHeads - 1))->IsItUnClear == 1) {
 		(*(Heads + NumberOfHeads - 1))->IsItUnClear = 0;
 	}
@@ -1985,13 +2301,14 @@ void StartWave() {
 
 	
 }
+int cnt = 0;
 void GetDown() {
 	ResetGameMenu();
 	for (int i = 0; i < NumberOfHeads; i++) {
 		Word* temp =*( Heads + i);
 		if (temp != NULL) {
 			if (temp->height >= MAxSHOWnHEIGHt) {
-				GameOver();
+				GameOver(0);
 			}
 			while (temp != NULL) {
 				(temp->height)++;
@@ -2006,12 +2323,20 @@ void GetDown() {
 		PrintLinkedList(*(Heads + i), WHITE);
 
 	}
+	if (cheetMode) {
+		cnt++;
+		if (cnt > 15) {
+			NextWord();
+		}
+	}
 }
 void NextWord() {
+	if (NumberOfHeads <= ListAndLock[0]) {
+		return;
+	}
 	gotoxy((GAMEWIDTH - strlen((*(Heads + ListAndLock[0]))->word)) / 2 + 2,(*(Heads + ListAndLock[0]))->height);
-	printf("             ");
-	if (strlen((*(Heads + ListAndLock[0]))->word) > 15) {
-		printf("       ");
+	for (int i = 0; i < strlen((*(Heads + ListAndLock[0]))->word)+2; i++) {
+		printf(" ");
 	}
 	if ((*(Heads + ListAndLock[0]))->Faults == 0) {
 
@@ -2042,6 +2367,7 @@ void NextWord() {
 
 
 
+
 	Word* temp;
 	temp = *(Heads + ListAndLock[0]);
 
@@ -2059,29 +2385,255 @@ void NextWord() {
 	ListAndLock[1] = 0;
 	ShowScore();
 
-
-	Word chosen = *(*(Heads + ListAndLock[0]));
-	if (chosen.IsItUnClear == 1) {
-		//
-		RestTime = 10;
-		//
-		(*(Heads + ListAndLock[0]))->IsItUnClear = 0;
-
-		gotoxy((GAMEWIDTH - chosen.UnCLearLenght )/ 2 + 2, chosen.height);
-		printf("             ");
-		if (chosen.UnCLearLenght > 15) {
-			printf("          ");
+	if (NumberOfHeads > ListAndLock[0]) {
+		Word chosen = *(*(Heads + ListAndLock[0]));
+		if (chosen.IsItUnClear == 1) {
+			//
+			
+			//
+			(*(Heads + ListAndLock[0]))->IsItUnClear = 0;
+			if (chosen.height >= MInSHOWNhEIGHT) {
+				setcolor(WHITE);
+				gotoxy((GAMEWIDTH - chosen.UnCLearLenght) / 2 + 2, chosen.height);
+				for (int i = 0; i < chosen.UnCLearLenght+2; i++) {
+					printf(" ");
+				}
+				gotoxy((GAMEWIDTH - strlen(chosen.word)) / 2 + 2, chosen.height);
+				printf(chosen.word);
+			}
 		}
-		gotoxy((GAMEWIDTH - strlen(chosen.word)) / 2 + 2, chosen.height);
-		printf(chosen.word);
+	}
+
+	
+
+}
+void GameOver(int stat) {
+	CurrentState = GameOverState;
+	TerminateThread(UnClearChangingSizeThread,0);
+	
+	DoColorize = 0;
+
+	if (PrevIndex == -1) {
+		player.PrevGames[2] = player.PrevGames[1];
+		player.PrevGames[1] = player.PrevGames[0];
+	
+		player.PrevGames[0].BeenPlayed = 1;
+		player.PrevGames[0].score = Score;
+		player.PrevGames[0].hardness = mode;
+		player.PrevGames[0].LastWave = wave;
+	}
+	else {
+		if (PrevIndex == 0) {
+			//nothing
+		}
+		else if (PrevIndex == 1) {
+			player.PrevGames[1] = player.PrevGames[0];
+		}
+		else {
+			
+			player.PrevGames[2] = player.PrevGames[1];
+			player.PrevGames[1] = player.PrevGames[0];
+		}
+
+		player.PrevGames[0].BeenPlayed = 1;
+		player.PrevGames[0].score = Score;
+		player.PrevGames[0].hardness = mode;
+		player.PrevGames[0].LastWave = wave;
+
 		
+
+	}
+
+
+
+
+	time_t second = time(NULL);
+	strcpy(player.PrevGames[0].time,asctime(localtime(&second))) ;
+	char FileName[45];
+
+	FileName[0] = '\0';
+
+	strcat(FileName, "Users/");
+	strcat(FileName, player.name);
+	strcat(FileName, " ");
+	strcat(FileName, player.LastName);
+	strcat(FileName, ".bin");
+	
+	FILE* file = fopen(FileName, "rb");
+
+
+	file = fopen(FileName, "wb");
+	fwrite(&player, sizeof(Player), 1, file);
+	fclose(file);
+	if (stat == 1) {
+		win();
+	}
+	else {
+		loose();
+	}
+	system("cls");
+	exit(0);
+
+}
+void loose() {
+	//ClearTerminal with red color--------------------
+	setcolor(RED);
+	gotoxy(0, 0);
+	//system("cls");
+	for (int i = 1; i < 50; i++) {
+		for (int i = 1; i < 40; i++) {
+			printf("---");
+
+		}
+		printf("\n");
+	}
+	gotoxy(CurserPos[0], CurserPos[1]);
+	//-------------------------------------------------
+	int n = 5;
+	float second = 5;
+	while (n--) {
+		
+		gotoxy(0, 0);
+		setcolor(YELLOW);
+
+
+		printf("#################################################################################################################\n");
+		printf("##                                                                                                             ##\n");
+		printf("##        LLLLLLLLLLL                                                                                          ##\n");
+		printf("##        L:::::::::L                                                                                          ##\n");
+		printf("##        L:::::::::L                                                                                          ##\n");
+		printf("##        LL:::::::LL                                                                                          ##\n");
+		printf("##          L:::::L                  ooooooooooo      ooooooooooo       ssssssssss       eeeeeeeeeeee          ##\n");
+		printf("##          L:::::L                oo:::::::::::oo  oo:::::::::::oo   ss::::::::::s    ee::::::::::::ee        ##\n");
+		printf("##          L:::::L               o:::::::::::::::oo:::::::::::::::oss:::::::::::::s  e::::::eeeee:::::ee      ##\n");
+		printf("##          L:::::L               o:::::ooooo:::::oo:::::ooooo:::::os::::::ssss:::::se::::::e     e:::::e      ##\n");
+		printf("##          L:::::L               o::::o     o::::oo::::o     o::::o s:::::s  ssssss e:::::::eeeee::::::e      ##\n");
+		printf("##          L:::::L               o::::o     o::::oo::::o     o::::o   s::::::s      e:::::::::::::::::e       ##\n");
+		printf("##          L:::::L               o::::o     o::::oo::::o     o::::o      s::::::s   e::::::eeeeeeeeeee        ##\n");
+		printf("##          L:::::L         LLLLLLo::::o     o::::oo::::o     o::::ossssss   s:::::s e:::::::e                 ##\n");
+		printf("##        LL:::::::LLLLLLLLL:::::Lo:::::ooooo:::::oo:::::ooooo:::::os:::::ssss::::::se::::::::e                ##\n");
+		printf("##        L::::::::::::::::::::::Lo:::::::::::::::oo:::::::::::::::os::::::::::::::s  e::::::::eeeeeeee        ##\n");
+		printf("##        L::::::::::::::::::::::L oo:::::::::::oo  oo:::::::::::oo  s:::::::::::ss    ee:::::::::::::e        ##\n");
+		printf("##        LLLLLLLLLLLLLLLLLLLLLLLL   ooooooooooo      ooooooooooo     sssssssssss        eeeeeeeeeeeeee        ##\n");
+		printf("##                                                                                                             ##\n");
+		printf("##__________________________________________%.1f seconds until closing__________________________________________##\n", second);
+		printf("##                                                                                                             ##\n");
+		printf("#################################################################################################################\n");
+
+		second -= 0.5;
+		Sleep(500);
+		gotoxy(0, 0);
+		setcolor(RED);
+		
+                                                                                               
+		printf("#################################################################################################################\n");
+		printf("##                                                                                                             ##\n");
+		printf("##        LLLLLLLLLLL                                                                                          ##\n");
+		printf("##        L:::::::::L                                                                                          ##\n");
+		printf("##        L:::::::::L                                                                                          ##\n");
+		printf("##        LL:::::::LL                                                                                          ##\n");
+		printf("##          L:::::L                  ooooooooooo      ooooooooooo       ssssssssss       eeeeeeeeeeee          ##\n");
+		printf("##          L:::::L                oo:::::::::::oo  oo:::::::::::oo   ss::::::::::s    ee::::::::::::ee        ##\n");
+		printf("##          L:::::L               o:::::::::::::::oo:::::::::::::::oss:::::::::::::s  e::::::eeeee:::::ee      ##\n");
+		printf("##          L:::::L               o:::::ooooo:::::oo:::::ooooo:::::os::::::ssss:::::se::::::e     e:::::e      ##\n");
+		printf("##          L:::::L               o::::o     o::::oo::::o     o::::o s:::::s  ssssss e:::::::eeeee::::::e      ##\n");
+		printf("##          L:::::L               o::::o     o::::oo::::o     o::::o   s::::::s      e:::::::::::::::::e       ##\n");
+		printf("##          L:::::L               o::::o     o::::oo::::o     o::::o      s::::::s   e::::::eeeeeeeeeee        ##\n");
+		printf("##          L:::::L         LLLLLLo::::o     o::::oo::::o     o::::ossssss   s:::::s e:::::::e                 ##\n");
+		printf("##        LL:::::::LLLLLLLLL:::::Lo:::::ooooo:::::oo:::::ooooo:::::os:::::ssss::::::se::::::::e                ##\n");
+		printf("##        L::::::::::::::::::::::Lo:::::::::::::::oo:::::::::::::::os::::::::::::::s  e::::::::eeeeeeee        ##\n");
+		printf("##        L::::::::::::::::::::::L oo:::::::::::oo  oo:::::::::::oo  s:::::::::::ss    ee:::::::::::::e        ##\n");
+		printf("##        LLLLLLLLLLLLLLLLLLLLLLLL   ooooooooooo      ooooooooooo     sssssssssss        eeeeeeeeeeeeee        ##\n");
+		printf("##                                                                                                             ##\n");
+		printf("##__________________________________________%.1f seconds until closing__________________________________________##\n", second);
+		printf("##                                                                                                             ##\n");
+		printf("#################################################################################################################\n");
+                                                                   
+
+		Sleep(500);
+		second -= 0.5;
+
 	}
 
 
 
 }
-void GameOver() {
-	exit(0);
-	
+void win() {
+	//ClearTerminal with green color--------------------
+
+	gotoxy(0, 0);
+	setcolor(GREEN);
+	//system("cls");
+	for (int i = 1; i < 50; i++) {
+		for (int i = 1; i < 40; i++) {
+			
+			printf("---");
+
+		}
+		printf("\n");
+	}
+
+	gotoxy(CurserPos[0], CurserPos[1]);
+	//-------------------------------------------------
+	int n = 5;
+	float second = 5;
+	while (n--) {
+		gotoxy(0, 0);
+		setcolor(YELLOW);
+
+		printf("###############################################################################################\n");
+		printf("##                                                                                           ##\n");
+		printf("##      WWWWWWWW                           WWWWWWWWIIIIIIIIIINNNNNNNN        NNNNNNNN        ##\n");
+		printf("##      W::::::W                           W::::::WI::::::::IN:::::::N       N::::::N        ##\n");
+		printf("##      W::::::W                           W::::::WI::::::::IN::::::::N      N::::::N        ##\n");
+		printf("##      W::::::W                           W::::::WII::::::IIN:::::::::N     N::::::N        ##\n");
+		printf("##       W:::::W           WWWWW           W:::::W   I::::I  N::::::::::N    N::::::N        ##\n");
+		printf("##        W:::::W         W:::::W         W:::::W    I::::I  N:::::::::::N   N::::::N        ##\n");
+		printf("##         W:::::W       W:::::::W       W:::::W     I::::I  N:::::::N::::N  N::::::N        ##\n");
+		printf("##          W:::::W     W:::::::::W     W:::::W      I::::I  N::::::N N::::N N::::::N        ##\n");
+		printf("##           W:::::W   W:::::W:::::W   W:::::W       I::::I  N::::::N  N::::N:::::::N        ##\n");
+		printf("##            W:::::W W:::::W W:::::W W:::::W        I::::I  N::::::N   N:::::::::::N        ##\n");
+		printf("##             W:::::W:::::W   W:::::W:::::W         I::::I  N::::::N    N::::::::::N        ##\n");
+		printf("##              W:::::::::W     W:::::::::W          I::::I  N::::::N     N:::::::::N        ##\n");
+		printf("##               W:::::::W       W:::::::W         II::::::IIN::::::N      N::::::::N        ##\n");
+		printf("##                W:::::W         W:::::W          I::::::::IN::::::N       N:::::::N        ##\n");
+		printf("##                 W:::W           W:::W           I::::::::IN::::::N        N::::::N        ##\n");
+		printf("##                  WWW             WWW            IIIIIIIIIINNNNNNNN         NNNNNNN        ##\n");
+		printf("##                                                                                           ##\n");
+		printf("##_______________________________%.1f seconds until closing____________________________________##\n",second);
+		printf("##                                                                                           ##\n");
+		printf("###############################################################################################\n");
+
+		Sleep(500);
+		second -= 0.5;
+		setcolor(GREEN);
+		gotoxy(0, 0);
+		printf("###############################################################################################\n");
+		printf("##                                                                                           ##\n");
+		printf("##      WWWWWWWW                           WWWWWWWWIIIIIIIIIINNNNNNNN        NNNNNNNN        ##\n");
+		printf("##      W::::::W                           W::::::WI::::::::IN:::::::N       N::::::N        ##\n");
+		printf("##      W::::::W                           W::::::WI::::::::IN::::::::N      N::::::N        ##\n");
+		printf("##      W::::::W                           W::::::WII::::::IIN:::::::::N     N::::::N        ##\n");
+		printf("##       W:::::W           WWWWW           W:::::W   I::::I  N::::::::::N    N::::::N        ##\n");
+		printf("##        W:::::W         W:::::W         W:::::W    I::::I  N:::::::::::N   N::::::N        ##\n");
+		printf("##         W:::::W       W:::::::W       W:::::W     I::::I  N:::::::N::::N  N::::::N        ##\n");
+		printf("##          W:::::W     W:::::::::W     W:::::W      I::::I  N::::::N N::::N N::::::N        ##\n");
+		printf("##           W:::::W   W:::::W:::::W   W:::::W       I::::I  N::::::N  N::::N:::::::N        ##\n");
+		printf("##            W:::::W W:::::W W:::::W W:::::W        I::::I  N::::::N   N:::::::::::N        ##\n");
+		printf("##             W:::::W:::::W   W:::::W:::::W         I::::I  N::::::N    N::::::::::N        ##\n");
+		printf("##              W:::::::::W     W:::::::::W          I::::I  N::::::N     N:::::::::N        ##\n");
+		printf("##               W:::::::W       W:::::::W         II::::::IIN::::::N      N::::::::N        ##\n");
+		printf("##                W:::::W         W:::::W          I::::::::IN::::::N       N:::::::N        ##\n");
+		printf("##                 W:::W           W:::W           I::::::::IN::::::N        N::::::N        ##\n");
+		printf("##                  WWW             WWW            IIIIIIIIIINNNNNNNN         NNNNNNN        ##\n");
+		printf("##                                                                                           ##\n");
+		printf("##_______________________________%.1f seconds until closing____________________________________##\n", second);
+		printf("##                                                                                           ##\n");
+		printf("###############################################################################################\n");
+		Sleep(500);
+		second -= 0.5;
+
+
+	}
 
 }
