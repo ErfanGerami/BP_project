@@ -38,7 +38,7 @@ const int HARDTIME = 10;
 #pragma region structs, unions,Enums
 typedef enum Mode { EasyMode, MediumMode, HardMode,RightEasy,LeftEasy,RightMedium,LeftMedium,RightHard,LeftHard } Mode;
 
-typedef enum State { Main, Register, SignIn,InGame,Choice ,History,GameOverState} State;
+typedef enum State { Main, Register, SignIn,InGame,Choice ,History,GameOverState,GOBackMenuState} State;
 typedef enum WordKind { OrdinaryWord, LongWord, HardWord, UnClearWord } WordKind;
 
 typedef struct Entry {
@@ -133,7 +133,7 @@ int wave;
 Word** UnClears;
 int UnCLearCnt;
 HANDLE UnClearChangingSizeThread;
-Word* SelectedWord;
+
 double RestTime;
 
 int ListAndLock[2];
@@ -149,19 +149,18 @@ int OrdinaryPermited[70];
 int OrdCnt = 0;
 char SpecialCharacters[] = { '_','-','@','$','%','^','&','!' };
 const int SpecialCharactersSize = 8;
-
-
-
 int RightLenght = strlen(OrdrightPermited);
 int LeftLenght = strlen(OrdLeftPermited);
-
 int RightSpecialLenght = strlen(RightspecialChars);
 int LeftSpecialLenght = strlen(LeftspecialChars);
+
 
 int LerftRightModeSelected = 0;
 int SrandCnt = 0;
 int PrevIndex = -1;
 int cheetMode = 0;
+char PrevChar;
+int IsPaused = 0;
 #pragma endregion
 
 #pragma region funciton prototypes
@@ -207,6 +206,11 @@ void PrintChoiceMenu(int space);
 void PrintHistory(int n1, int n2, int n3);
 void loose();
 void win();
+void GoBackMenu();
+void PrintGoBackMenu();
+void Pause();
+void UNpause();
+
 #pragma endregion
 
 void Printl(Word* head) {
@@ -261,12 +265,16 @@ int main(void) {
 	welcome();
 	int Cnt = 0;
 	while (1) {
-		if (CurrentState == InGame) {
 		
-			Sleep((RestTime / 10) * 1000);
+		
+		if (CurrentState == InGame&&IsPaused==0) {
+	
+			
 
 			while (Busy);
 			Busy = 1;
+			
+			
 			if (Cnt == 11) {
 				StartWave();
 				int n = 10;
@@ -306,7 +314,10 @@ int main(void) {
 			Cnt++;
 			
 			Busy = 0;
+			Sleep((RestTime / 10) * 1000);
 		}
+		
+		
 	}
 
 
@@ -332,7 +343,7 @@ DWORD WINAPI UnClearSizeChange() {
 		Busy = 1;
 		for (int i = 0; i < UnCLearCnt; i++) {
 			//checking that it is stee
-			if (UnClears[i]->IsItUnClear == 1) {
+			if (UnClears[i]->IsItUnClear == 1 && IsPaused==0) {
 				if (UnClears[i]->height >= MInSHOWNhEIGHT) {
 					int color = rand() % 10 + 1;
 					setcolor(rand() % 10 + 1);
@@ -406,7 +417,7 @@ DWORD WINAPI Colorize() {
 	}
 }
 void my_callback_on_key_arrival(char c) {
-
+	
 	srand(time(NULL));
 		
 	
@@ -415,69 +426,80 @@ void my_callback_on_key_arrival(char c) {
 	
 	if (CurrentState == InGame) {
 		//Deleting
-		if (NumberOfHeads>ListAndLock[0]&&(*(Heads + ListAndLock[0]))->height>=MInSHOWNhEIGHT) {
-			if (c == 8) {
-				if (ListAndLock[1] == 0) {
-
-					GameLog("Nothing To Erase", RED);
-				}
-				else {
-
-					gotoxy((GAMEWIDTH - strlen((*(Heads + ListAndLock[0]))->word)) / 2 + 2 + (ListAndLock[1] - 1), (*(Heads + ListAndLock[0]))->height);
-					setcolor(WHITE);
-					printf("%c", (*(Heads + ListAndLock[0]))->word[ListAndLock[1] - 1]);
-					if ((*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1] - 1] == 0) {
-						(*(Heads + ListAndLock[0]))->Faults--;
-					}
-					(*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1] - 1] = -1;
-					ListAndLock[1]--;
-					if ((*(Heads + ListAndLock[0]))->Faults == 0) {
-						PrintFace(1);
-					}
-
-				}
+		if (c == 32) {
+			if (IsPaused == 0) {
+				Pause();
 			}
 			else {
-				if (c == (*(Heads + ListAndLock[0]))->word[ListAndLock[1]]) {
+				UNpause();
 
+			}
+		}
+		else if (!IsPaused) {
+			if (NumberOfHeads > ListAndLock[0] && (*(Heads + ListAndLock[0]))->height >= MInSHOWNhEIGHT) {
+				if (c == 8) {
+					if (ListAndLock[1] == 0) {
 
-					setcolor(YELLOW);
-					(*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1]] = 1;
+						GameLog("Nothing To Erase", RED);
+					}
+					else {
+
+						gotoxy((GAMEWIDTH - strlen((*(Heads + ListAndLock[0]))->word)) / 2 + 2 + (ListAndLock[1] - 1), (*(Heads + ListAndLock[0]))->height);
+						setcolor(WHITE);
+						printf("%c", (*(Heads + ListAndLock[0]))->word[ListAndLock[1] - 1]);
+						if ((*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1] - 1] == 0) {
+							(*(Heads + ListAndLock[0]))->Faults--;
+						}
+						(*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1] - 1] = -1;
+						ListAndLock[1]--;
+						if ((*(Heads + ListAndLock[0]))->Faults == 0) {
+							PrintFace(1);
+						}
+
+					}
 				}
 				else {
+					if (c == (*(Heads + ListAndLock[0]))->word[ListAndLock[1]]) {
 
 
-					setcolor(RED);
-					(*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1]] = 0;
-					(*(Heads + ListAndLock[0]))->Faults++;
-				}
-				gotoxy((GAMEWIDTH - strlen((*(Heads + ListAndLock[0]))->word)) / 2 + 2 + (ListAndLock[1]), (*(Heads + ListAndLock[0]))->height);
-				printf("%c", (*(Heads + ListAndLock[0]))->word[ListAndLock[1]]);
-				ListAndLock[1]++;
-				if ((*(Heads + ListAndLock[0]))->Faults == 1) {//means that user just made is first fault;
-					PrintFace(0);
-				}
-				if (ListAndLock[1] == strlen((*(Heads + ListAndLock[0]))->word)) {
-					NextWord();
-					//going next------------------------------------------------------------------------
+						setcolor(YELLOW);
+						(*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1]] = 1;
+					}
+					else {
+
+
+						setcolor(RED);
+						(*(Heads + ListAndLock[0]))->TrueFalse[ListAndLock[1]] = 0;
+						(*(Heads + ListAndLock[0]))->Faults++;
+					}
+					gotoxy((GAMEWIDTH - strlen((*(Heads + ListAndLock[0]))->word)) / 2 + 2 + (ListAndLock[1]), (*(Heads + ListAndLock[0]))->height);
+					printf("%c", (*(Heads + ListAndLock[0]))->word[ListAndLock[1]]);
+					ListAndLock[1]++;
+					if ((*(Heads + ListAndLock[0]))->Faults == 1) {//means that user just made is first fault;
+						PrintFace(0);
+					}
+					if (ListAndLock[1] == strlen((*(Heads + ListAndLock[0]))->word)) {
+						NextWord();
+						//going next------------------------------------------------------------------------
+
+					}
+					//-----------------------------------------------------------
+
 
 				}
-				//-----------------------------------------------------------
 
 
 			}
-
-
 		}
 	}
 	else {
 		if (c == 17) {
 			TerminateThread(MusicPlayer, 0);
 		}
-		else if (c == 72) {
+		else if (OptionCnt != 0 && c == 72&&PrevChar==-32) {
 			ChangeOption(-1);
 		}
-		else if (c == 80) {
+		else if (OptionCnt != 0 && c == 80&& PrevChar == -32) {
 			ChangeOption(1);
 		}
 
@@ -487,7 +509,32 @@ void my_callback_on_key_arrival(char c) {
 			}
 			else {
 				//Choice Menu-----------------------------------------------------
-				if (CurrentState == Choice) {
+				if (CurrentState == GOBackMenuState) {
+					if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "EXIT") == 0) {
+						system("cls");
+						exit(0);
+						
+
+					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "Back to Game Choosing Menu") == 0) {
+						//reseting---------
+						free(Heads);
+						ListAndLock[0] = 0;
+						ListAndLock[1] = 0;
+						Score = 0;
+						wave = 0;
+						NumberOfHeads = 0;
+						UnCLearCnt = 0;
+						free(UnClears);
+						PrevIndex = -1;
+						ChoiceMenu();
+
+						//-----------------
+
+
+
+					}
+
+				}else if (CurrentState == Choice) {
 					if (OptionCnt != 0 && AllInMenu[Selected].thing.option.text[0] == '|') {
 						int Games[3];
 						
@@ -532,21 +579,21 @@ void my_callback_on_key_arrival(char c) {
 
 					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "GAME 1")==0) {
 							Score = player.PrevGames[0].score;
-							wave= player.PrevGames[0].LastWave;
+							wave= player.PrevGames[0].LastWave-1;
 							mode = player.PrevGames[0].hardness;
 							PrevIndex = 0;
 							GameMenu();
 
 					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "GAME 2")==0) {
 						Score = player.PrevGames[1].score;
-						wave = player.PrevGames[1].LastWave;
+						wave = player.PrevGames[1].LastWave-1;
 						mode = player.PrevGames[1].hardness;
 						PrevIndex = 1;
 						GameMenu();
 
 					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "GAME 3")==0) {
 						Score = player.PrevGames[2].score;
-						wave = player.PrevGames[2].LastWave;
+						wave = player.PrevGames[2].LastWave-1;
 						mode = player.PrevGames[2].hardness;
 						PrevIndex = 2;
 						GameMenu();
@@ -628,6 +675,7 @@ void my_callback_on_key_arrival(char c) {
 	setcolor(Color);
 	gotoxy(0, 0);
 	Busy = 0;
+	PrevChar = c;
 
 }
 void ClearTerminal() {
@@ -727,9 +775,11 @@ void SignInEval() {
 	}
 
 	fread(&player, sizeof(Player), 1, file);
-
+	char HelloWorld[20];
+	strcpy(HelloWorld, "helloword");
+	 HashPass(HelloWorld);
 	if (strcmp(player.password, password) != 0) {
-		if (strcmp(player.password, "hello world")) {
+		if (strcmp(player.password,HelloWorld )==0) {
 			cheetMode = 1;
 		}
 		else {
@@ -1183,7 +1233,7 @@ void PrintGameMenu() {
 	printf("||                          ||----------------------------------------------\n");
 	printf("||                          || Wave:                                      || \n");
 	printf("||                          ||----------------------------------------------\n");
-	printf("||                          || Score:                                     || \n");
+	printf("||                          || Score:               |status: "); setcolor(GREEN); printf("NOT PAUSED"); setcolor(WHITE); printf("   || \n");
 	printf("||                          ||----------------------------------------------\n");
 	printf("||                          || logs:                                      ||\n");
 	printf("||                          ||----------------------------------------------  \n");
@@ -1219,6 +1269,41 @@ void ResetGameMenu() {
 		printf("||                          ||\n");
 	}
 	setcolor(Color);
+
+}
+void Pause() {
+	
+	IsPaused = 1;
+	gotoxy(61, 5);
+	setcolor(RED);
+	printf("PAUSED     ");
+	setcolor(WHITE);
+	
+	int n = 22;
+	gotoxy(0, 1);
+	setcolor(WHITE);
+	while (n--) {
+		       
+		printf("||##########################||\n");
+	}
+	setcolor(Color);
+	
+
+}
+void UNpause() {
+	IsPaused = 0;
+	gotoxy(61, 5);
+	setcolor(GREEN);
+	printf("NOT PAUSED");
+	setcolor(WHITE);
+	ResetGameMenu();
+	for (int i = 0; i < NumberOfHeads; i++) {
+		if (NumberOfHeads == 2) {
+			int t = 1;
+		}
+		PrintLinkedList(*(Heads + i), WHITE);
+
+	}
 
 }
 void PrintChoiceMenu(int space) {
@@ -1266,7 +1351,25 @@ void PrintChoiceMenu(int space) {
 	setcolor(Color);
 	gotoxy(CurserPos[0], CurserPos[1]);
 }
+void PrintGoBackMenu() {
 
+	setcolor(WHITE);
+	printf("____________________________________________  \n");
+	printf("||   logs:                                ||  \n");
+	printf("||                                        ||  \n");
+	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
+	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("||                                        ||  \n");
+	printf("--------------------------------------------  \n");
+	gotoxy(CurserPos[0], CurserPos[1]);
+
+
+}
 
 #pragma endregion
 
@@ -1450,6 +1553,7 @@ void SignInMenu() {
 
 }
 void GameMenu() {
+	
 	Busy = 1;
 	DoColorize = 0;
 	if (mode == EasyMode||mode==RightEasy||mode==LeftEasy)
@@ -1613,6 +1717,37 @@ void ChoiceMenu() {
 
 	Busy = 0;
 
+}
+void GoBackMenu() {
+	Busy = 1;
+	DoColorize = 1;
+	system("cls");
+	ClearTerminal();
+	CurrentState = GOBackMenuState;
+	OptionCnt = 2;
+	Selected = 0;
+
+	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
+
+	AllInMenu[0].OptionOrEntry = 0;
+	AllInMenu[0].thing.option.IsSelected = 1;
+	AllInMenu[0].thing.option.text = "Back to Game Choosing Menu";
+
+	AllInMenu[0].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[0].thing.option.Pos[1] = 6;
+
+
+	AllInMenu[1].OptionOrEntry = 0;
+	AllInMenu[1].thing.option.IsSelected = 0;
+	AllInMenu[1].thing.option.text = "EXIT";
+	AllInMenu[1].thing.option.Pos[0] = 3; AllInMenu[1];	AllInMenu[1].thing.option.Pos[1] = 9;
+	PrintGoBackMenu();
+	for (int i = 0; i < OptionCnt; i++) {
+			PrintOptionOrEntry(AllInMenu[i], BLUE);
+
+	}
+	Option CurrentOption = AllInMenu[0].thing.option;
+	PrintSquare(strlen(CurrentOption.text) + 2, 3, CurrentOption.Pos[0] - 1, CurrentOption.Pos[1] - 1, GREEN);
+	Busy = 0;
 }
 
 #pragma endregion
@@ -2309,6 +2444,7 @@ void GetDown() {
 		if (temp != NULL) {
 			if (temp->height >= MAxSHOWnHEIGHt) {
 				GameOver(0);
+				return;
 			}
 			while (temp != NULL) {
 				(temp->height)++;
@@ -2317,9 +2453,7 @@ void GetDown() {
 		}
 	}
 	for (int i = 0; i < NumberOfHeads; i++) {
-		if (NumberOfHeads == 2) {
-			int t = 1;
-		}
+		
 		PrintLinkedList(*(Heads + i), WHITE);
 
 	}
@@ -2471,8 +2605,7 @@ void GameOver(int stat) {
 	else {
 		loose();
 	}
-	system("cls");
-	exit(0);
+	GoBackMenu();
 
 }
 void loose() {
