@@ -1262,7 +1262,7 @@ void PrintGameMenu() {
 	gotoxy(CurserPos[0], CurserPos[1]);
 }
 void ResetGameMenu() {
-	int n = 21;
+	int n = 22;
 	gotoxy(0, 1);
 	setcolor(WHITE);
 	while (n--) {
