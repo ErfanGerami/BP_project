@@ -32,7 +32,7 @@ const int MInSHOWNhEIGHT=1;
 const int MAxSHOWnHEIGHt = 22;
 const int EASYTIME = 10;
 const int MEDIUMTIME = 8;
-const int HARDTIME = 10;
+const int HARDTIME = 5;
 const char BIGSQUARE = 219;
 const char LITTLESQUARE = 254;
 #pragma endregion
@@ -113,6 +113,7 @@ typedef struct Word {
 #pragma endregion
 
 #pragma region public variables
+int Cnt = 0;
 State CurrentState;
 OptionOrEntry* AllInMenu;
 int CurserPos[2];
@@ -264,9 +265,9 @@ int main(void) {
 	HANDLE BlinkThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Colorize, NULL, 0, NULL);
 	HANDLE thread_id = start_listening(my_callback_on_key_arrival);
 	//------------------------------------------------------------------------------------------------
-	//welcome();
-	MainMenu();
-	int Cnt = 0;
+	welcome();
+	
+	
 	while (1) {
 		
 		
@@ -287,9 +288,36 @@ int main(void) {
 					break;
 				case MediumMode:
 					RestTime *= 70.0 / 100.0;
+					break;
+
 
 				case HardMode:
 					RestTime *= 60.0 / 100.0;
+					break;
+
+				case LeftEasy:
+					RestTime *= 80.0 / 100.0;
+					break;
+				case LeftMedium:
+					RestTime *= 70.0 / 100.0;
+					break;
+
+
+				case LeftHard:
+					RestTime *= 60.0 / 100.0;
+					break;
+
+				case RightEasy:
+
+					RestTime *= 80.0 / 100.0;
+					break;
+				case RightMedium:
+					RestTime *= 70.0 / 100.0;
+					break;
+
+				case RightHard:
+					RestTime *= 60.0 / 100.0;
+					break;
 				default:
 					break;
 
@@ -310,11 +338,13 @@ int main(void) {
 				while (1);*/
 
 			
-				Cnt = 0;
+				Cnt = -1;
 			}
 			GetDown();
-			
+
 			Cnt++;
+			
+			
 			
 			Busy = 0;
 			Sleep((RestTime / 10) * 1000);
@@ -520,19 +550,19 @@ void my_callback_on_key_arrival(char c) {
 
 					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "Back to Game Choosing Menu") == 0) {
 						//reseting---------
-						free(Heads);
-						Heads = (Word * *)malloc(sizeof(Word*));
-					
+						Heads = (Word * *)realloc(Heads,0);
 						ListAndLock[0] = 0;
 						ListAndLock[1] = 0;
 						Score = 0;
 						wave = 0;
 						NumberOfHeads = 0;
 						UnCLearCnt = 0;
-						free(UnClears);
-						UnClears = (Word  **)malloc(sizeof(Word*));
+						
+						UnClears = (Word  **)realloc(UnClears,0);
+						
 						PrevIndex = -1;
 						ChoiceMenu();
+						Cnt = 0;
 
 						//-----------------
 
@@ -1173,7 +1203,7 @@ void PrintHistory(int n1, int n2, int n3) {
 		maxdown++;
 	}
 	printf("-----------------------------------------------------------------------------------------------------------  \n");
-	printf("Game1                                             Game2                                       Game3\n\n");
+	printf("|Game1|                                             |Game2|                                       |Game3|\n\n\n");
 	printf("_________________________________________PRESS ENTER KEY TO CONTINUE_________________________________________");
 
 	int PartInt;
@@ -1454,6 +1484,11 @@ void RegisterMenu() {
 	OptionCnt = 7;
 	Selected = 0;
 	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
+	if (AllInMenu == NULL) {
+		system("cls");
+		printf("memory leak");
+		exit(1);
+	}
 	AllInMenu[0].OptionOrEntry = 1;
 	AllInMenu[0].thing.entry.IsSelected = 1;
 	AllInMenu[0].thing.entry.text = "name";
@@ -1533,7 +1568,11 @@ void SignInMenu() {
 	OptionCnt = 5;
 	Selected = 0;
 	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
-
+	if (AllInMenu == NULL) {
+		system("cls");
+		printf("memory leak");
+		exit(1);
+	}
 	AllInMenu[0].OptionOrEntry = 1;
 	AllInMenu[0].thing.entry.IsSelected = 1;
 	AllInMenu[0].thing.entry.text = "name";
@@ -1591,6 +1630,8 @@ void SignInMenu() {
 }
 void GameMenu() {
 	
+
+
 	Busy = 1;
 	DoColorize = 0;
 	if (mode == EasyMode||mode==RightEasy||mode==LeftEasy)
@@ -1631,7 +1672,11 @@ void ChoiceMenu() {
 	Selected = 0;
 	
 	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, 11 * sizeof(OptionOrEntry));
-
+	if (AllInMenu == NULL) {
+		system("cls");
+		printf("memory leak");
+		exit(1);
+	}
 	AllInMenu[0].OptionOrEntry = 0;
 	AllInMenu[0].thing.option.IsSelected = 1;
 	AllInMenu[0].thing.option.text = "New Easy GAME";
@@ -1766,7 +1811,11 @@ void GoBackMenu() {
 	Selected = 0;
 
 	AllInMenu = (OptionOrEntry*)realloc(AllInMenu, OptionCnt * sizeof(OptionOrEntry));
-
+	if (AllInMenu == NULL) {
+		system("cls");
+		printf("memory leak");
+		exit(1);
+	}
 	AllInMenu[0].OptionOrEntry = 0;
 	AllInMenu[0].thing.option.IsSelected = 1;
 	AllInMenu[0].thing.option.text = "Back to Game Choosing Menu";
@@ -2021,6 +2070,11 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight,
 	}
 	
 	UnClears = (Word**)realloc(UnClears, (UnCLearCnt + Unclear) * sizeof(Word*));
+	if (UnClears == NULL) {
+		system("cls");
+		printf("memory leak");
+		exit(1);
+	}
 	for (int i = 0; i < Unclear; i++) {
 		UnClears[UnCLearCnt]= TempHead;
 		TempHead->kind = GenerateUnclear(Chert, None0_Right1_Left2);
@@ -2458,10 +2512,11 @@ void HashPass(char pass[20]) {
 }
 void StartWave() {
 	wave++;
-	int maxOrd = 11 - wave;
-	int maxHard= 2*wave;
-	int maxLong = 2*wave;
-	int maxUnClear = 2*wave;
+	int maxOrd = max(11 - wave,0);
+	
+	int maxHard= min(2*wave,4);
+	int maxLong = min(2*wave,4);
+	int maxUnClear = min(2*wave,4);
 	int all = 0;
 	int ord=0, hard=0, _long=0, UnClear=0;
 	if (maxOrd != 0) {
@@ -2471,7 +2526,11 @@ void StartWave() {
 		ord = 0;
 	}
 	all += ord;
+	if (all < 10) {
 
+		UnClear = rand() % min(10 - all, maxUnClear);
+		all += UnClear;
+	}
 	if (all < 10) {
 		hard = rand() % min(10 -all, maxHard);
 		all += hard;
@@ -2485,11 +2544,7 @@ void StartWave() {
 
 
 
-	if (all < 10) {
-
-		 UnClear = rand() % min(10 - all, maxUnClear);
-		all += UnClear;
-	}
+	
 	ord += 10 - all;
 
 	
@@ -2616,8 +2671,9 @@ void NextWord() {
 
 }
 void GameOver(int stat) {
+	UnCLearCnt = 0;
+	NumberOfHeads = 0;
 	CurrentState = GameOverState;
-	TerminateThread(UnClearChangingSizeThread,0);
 	
 	DoColorize = 0;
 
