@@ -1,13 +1,19 @@
 ﻿  BP_Project.cpp
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(236): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(317): warning C4244: 'argument': conversion from 'double' to 'DWORD', possible loss of data
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(421): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(939): warning C4129: '/': unrecognized character escape sequence
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1027): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1157): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1628): warning C4101: 'name': unreferenced local variable
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(2013): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(2375): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(2472): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1870): warning C4715: 'GenerateUnclear': not all control paths return a value
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(36): warning C4309: 'initializing': truncation of constant value
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(37): warning C4309: 'initializing': truncation of constant value
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(238): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(320): warning C4244: 'argument': conversion from 'double' to 'DWORD', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(424): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(935): warning C4474: 'printf' : too many arguments passed for format string
+  C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(935): note: placeholders and their parameters expect 0 variadic arguments, but 1 were provided
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(960): warning C4129: '/': unrecognized character escape sequence
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1049): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1081): warning C4101: 'n2': unreferenced local variable
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1122): warning C4101: 'n2': unreferenced local variable
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1191): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1666): warning C4101: 'name': unreferenced local variable
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(2060): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(2449): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(2546): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Geramizade\source\repos\BP_Project\BP_Project\BP_Project.cpp(1908): warning C4715: 'GenerateUnclear': not all control paths return a value
   BP_Project.vcxproj -> C:\Users\Geramizade\source\repos\BP_Project\Debug\BP_Project.exe

@@ -33,7 +33,10 @@ const int MAxSHOWnHEIGHt = 22;
 const int EASYTIME = 10;
 const int MEDIUMTIME = 8;
 const int HARDTIME = 10;
+const char BIGSQUARE = 219;
+const char LITTLESQUARE = 254;
 #pragma endregion
+
 
 #pragma region structs, unions,Enums
 typedef enum Mode { EasyMode, MediumMode, HardMode,RightEasy,LeftEasy,RightMedium,LeftMedium,RightHard,LeftHard } Mode;
@@ -133,9 +136,7 @@ int wave;
 Word** UnClears;
 int UnCLearCnt;
 HANDLE UnClearChangingSizeThread;
-
 double RestTime;
-
 int ListAndLock[2];
 int Score;
 Mode mode;
@@ -210,6 +211,7 @@ void GoBackMenu();
 void PrintGoBackMenu();
 void Pause();
 void UNpause();
+void PrintConvertedToSquare(const char*  text,  char littleChar);
 
 #pragma endregion
 
@@ -221,7 +223,7 @@ void Printl(Word* head) {
 		temp = temp->next;
 	}
 }
-
+//■,█
 //-------------------------------------------------------------------------
 //-------------------------------------------------------------------------
 //-------------------------------------------------------------------------
@@ -262,7 +264,8 @@ int main(void) {
 	HANDLE BlinkThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Colorize, NULL, 0, NULL);
 	HANDLE thread_id = start_listening(my_callback_on_key_arrival);
 	//------------------------------------------------------------------------------------------------
-	welcome();
+	//welcome();
+	MainMenu();
 	int Cnt = 0;
 	while (1) {
 		
@@ -440,7 +443,7 @@ void my_callback_on_key_arrival(char c) {
 				if (c == 8) {
 					if (ListAndLock[1] == 0) {
 
-						GameLog("Nothing To Erase", RED);
+						GameLog("Nothing To Erase\a", RED);
 					}
 					else {
 
@@ -518,6 +521,8 @@ void my_callback_on_key_arrival(char c) {
 					}else if (OptionCnt != 0 && strcmp(AllInMenu[Selected].thing.option.text, "Back to Game Choosing Menu") == 0) {
 						//reseting---------
 						free(Heads);
+						Heads = (Word * *)malloc(sizeof(Word*));
+					
 						ListAndLock[0] = 0;
 						ListAndLock[1] = 0;
 						Score = 0;
@@ -525,6 +530,7 @@ void my_callback_on_key_arrival(char c) {
 						NumberOfHeads = 0;
 						UnCLearCnt = 0;
 						free(UnClears);
+						UnClears = (Word  **)malloc(sizeof(Word*));
 						PrevIndex = -1;
 						ChoiceMenu();
 
@@ -639,7 +645,7 @@ void my_callback_on_key_arrival(char c) {
 		}
 		else if (OptionCnt!=0&&AllInMenu[Selected].OptionOrEntry == 1 && c != -32) {
 			if (c == 32) {
-				Log("No Spaces", RED);
+				Log("No Spaces\a", RED);
 				
 			}
 			else {
@@ -683,15 +689,13 @@ void ClearTerminal() {
 	//system("cls");
 	for (int i = 1; i < 50; i++) {
 		for (int i = 1; i < 40; i++) {
-			setcolor(rand() % 20);
-			printf("---");
+			setcolor(rand() % 20+1);
+			printf("---"); 
 
 		}
 		printf("\n");
 	}
-	gotoxy(77, 10);
-	setcolor(RED);
-	printf("_____ _ _-__ _-__ ---  _-- --- _-_ _-__ -__");
+	
 	gotoxy(CurserPos[0], CurserPos[1]);
 
 }
@@ -776,10 +780,10 @@ void SignInEval() {
 
 	fread(&player, sizeof(Player), 1, file);
 	char HelloWorld[20];
-	strcpy(HelloWorld, "helloword");
+	strcpy(HelloWorld, "helloworld");
 	 HashPass(HelloWorld);
 	if (strcmp(player.password, password) != 0) {
-		if (strcmp(player.password,HelloWorld )==0) {
+		if (strcmp(password,HelloWorld )==0) {
 			cheetMode = 1;
 		}
 		else {
@@ -793,6 +797,23 @@ void SignInEval() {
 #pragma endregion
 
 #pragma region printing functions
+void PrintConvertedToSquare( const char* text,char littleChar) {
+	int size = strlen(text);
+	for (int i = 0; i < size; i++) {
+		if (text[i] == '\n') {
+			printf("\n");
+		}
+		else if (text[i] == '-') {
+			printf("%c",littleChar);
+		}
+		else if(text[i]=='|'|| text[i] == '_'|| text[i] == '$'|| text[i] == '#') {
+			printf("%c", BIGSQUARE);
+		}
+		else {
+			printf("%c", text[i]);
+		}
+	}
+}
 void ShowScore() {
 	setcolor(BLUE);
 	gotoxy(39, 5);
@@ -834,7 +855,7 @@ void PrintSquare(int width, int  height, int StartX, int StartY, int Color) {
 	setcolor(Color);
 	printf("|");
 	for (int i = 0; i < width - 2; i++) {
-		printf("-");
+		printf("%c", LITTLESQUARE);
 	}
 	printf("|");
 	for (int i = 1; i <= height - 2; i++) {
@@ -846,7 +867,7 @@ void PrintSquare(int width, int  height, int StartX, int StartY, int Color) {
 	gotoxy(StartX, StartY + height - 1);
 	printf("|");
 	for (int i = 0; i < width - 2; i++) {
-		printf("-");
+		printf("%c", LITTLESQUARE);
 	}
 	printf("|");
 
@@ -898,25 +919,25 @@ void welcome() {
 
 		printf("  ###    ##  ###      ####    ##         #####     ####    ###   ###  ####       ####      \n");
 		printf(" #####   ##   ###    ######   ##        ######    ######  ##### ##### ####      #####      \n");
-		printf(" #  ###  ###  ###   ### ###   ##       ##   ##   ##   ### #  #### ##### ##     ##  ###    \n");
-		printf(" #   ##  ###  ##    ##  ###   ##       ##        ##   ###    #### ####  ##    ###  ##    \n");
-		printf("     ##  ###  ##    ##  ##    ##      ###       ###    ##    ###  ####  ##    ### ###    \n");
-		printf("     ##########    ######     ##      ###       ###    ##    ###  ###   ##    ######      \n");
-		printf("     ####  ####     ###       ##      ###       ###    ##    ##   ###   ##    ###         \n");
+		printf(" #  ###  ###  ###   ### ###   ##       ##   ##   ##   ### #  #### ##### ##     ##  ###     \n");
+		printf(" #   ##  ###  ##    ##  ###   ##       ##        ##   ###    #### ####  ##    ###  ##      \n");
+		printf("     ##  ###  ##    ##  ##    ##      ###       ###    ##    ###  ####  ##    ### ###      \n");
+		printf("     ##########    ######     ##      ###       ###    ##    ###  ###   ##    ######       \n");
+		printf("     ####  ####     ###       ##      ###       ###    ##    ##   ###   ##    ###          \n");
 		printf("      ###  ###      ###    #  ##  #   ###    ##  ##   ###    ##   ###   ##  # ###    ##    \n");
 		printf("      ###  ###      ########  ## ##    #######   ###  ##     ##   ###   #####  ### ###     \n");
-		printf("      ##   ##        #####    ####      #####     #####      ##   ###   ####    #####  \n");
+		printf("      ##   ##        #####    ####      #####     #####      ##   ###   ####    #####      \n");
 		//------------------------------
 		Sleep(300); gotoxy(0, 0); system("cls"); setcolor(GREEN);
 
 
 
-		printf("                      ##\n");
-		printf(" ###   #   ##   ####  ##      ####    ####  ### ### ####    ####\n");
-		printf(" # ##  ##  ##  ## ##  ##     ##  #   ##  #### # # ### ##   ## ##\n");
-		printf("    #  ##  #   ## ##  ##     ##      #   ###  ##  ### ##   ## ##\n");
-		printf("    ########   ####   ##     ##     ##   ##   ##  ##  ##   ####\n");
-		printf("    ### ###    ##     ##  #  ##     ##   ##   ##  ##  ##   ##\n");
+		printf("                      ##\n",' ');
+		printf(" ###   #   ##   ####  ##      ####    ####  ### ### ####    #### \n");
+		printf(" # ##  ##  ##  ## ##  ##     ##  #   ##  #### # # ### ##   ## ## \n");
+		printf("    #  ##  #   ## ##  ##     ##      #   ###  ##  ### ##   ## ## \n");
+		printf("    ########   ####   ##     ##     ##   ##   ##  ##  ##   ####  \n");
+		printf("    ### ###    ##     ##  #  ##     ##   ##   ##  ##  ##   ##    \n");
 		printf("    ### ###    ##   # ## ##  ##   #  ##  #    ##  ##  ## # ##   #\n");
 		printf("     #   #      ####   ###    ####   #####    ##  ##  ###   #### \n");
 		//------------------------------
@@ -967,40 +988,41 @@ void welcome() {
 
 }
 void PrintFace(int happy) {
-	int start = 9;
+	int start = 10;
 	if (happy == 0) {
 		setcolor(RED);
-		gotoxy(31, start);
-		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start);
-		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start+1);
-		printf("--------$$$$$$$$$$-----------$$$$$$$$$$-----\n"); gotoxy(31, start + 2);
-		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start + 3);
-		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start + 4);
-		printf("--------------------#######-----------------\n"); gotoxy(31, start + 5);
-		printf("----------------################------------\n"); gotoxy(31, start + 6);
-		printf("----------- ######################----------\n"); gotoxy(31, start + 7);
-		printf("---------- ###########--############--------\n"); gotoxy(31, start + 8);
-		printf("----------########---------##########-------\n"); gotoxy(31, start + 9);
-		printf("---------#####------------------######------\n"); gotoxy(31, start + 10);
-		printf("--------###-------------------------####----\n"); gotoxy(31, start + 11);
-		printf("--------#------------------------------#----\n"); gotoxy(31, start + 12);
-	}
-	else {
-		setcolor(GREEN);
-		gotoxy(31, start);
-		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start);
-		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start + 1);
-		printf("--------$$$$$$$$$$-----------$$$$$$$$$$-----\n"); gotoxy(31, start + 2);
-		printf("---------$$$$$$$$-------------$$$$$$$$------\n"); gotoxy(31, start + 3);
-		printf("----------$$$$$$---------------$$$$$$-------\n"); gotoxy(31, start + 4);
-		printf("--------#------------------------------#----\n"); gotoxy(31, start + 5);
-		printf("--------###-------------------------####----\n"); gotoxy(31, start + 6);
-		printf("---------#####------------------######------\n"); gotoxy(31, start + 7);
-		printf("----------########---------##########-------\n"); gotoxy(31, start + 8);
-		printf("---------- ###########--############--------\n"); gotoxy(31, start + 9);
-		printf("----------- ######################----------\n"); gotoxy(31, start + 10);
-		printf("----------------################------------\n"); gotoxy(31, start + 11);
-		printf("---------------------######-----------------\n"); gotoxy(31, start + 12);
+		gotoxy(30, start-1);
+		
+		PrintConvertedToSquare("----------$$$$$$---------------$$$$$$-------\n",' '); gotoxy(30, start);
+		PrintConvertedToSquare("---------$$$$$$$$-------------$$$$$$$$------\n",' '); gotoxy(30, start+1);
+		PrintConvertedToSquare("--------$$$$$$$$$$-----------$$$$$$$$$$-----\n",' '); gotoxy(30, start + 2);
+		PrintConvertedToSquare("---------$$$$$$$$-------------$$$$$$$$------\n",' '); gotoxy(30, start + 3);
+		PrintConvertedToSquare("----------$$$$$$---------------$$$$$$-------\n",' '); gotoxy(30, start + 4);
+		PrintConvertedToSquare("--------------------#######-----------------\n",' '); gotoxy(30, start + 5);
+		PrintConvertedToSquare("----------------################------------\n",' '); gotoxy(30, start + 6);
+		PrintConvertedToSquare("----------- ######################----------\n",' '); gotoxy(30, start + 7);
+		PrintConvertedToSquare("---------- ###########--############--------\n",' '); gotoxy(30, start + 8);
+		PrintConvertedToSquare("----------########---------##########-------\n",' '); gotoxy(30, start + 9);
+		PrintConvertedToSquare("---------#####------------------######------\n",' '); gotoxy(30, start + 10);
+		PrintConvertedToSquare("--------###-------------------------####----\n",' '); gotoxy(30, start + 11);
+		PrintConvertedToSquare("--------#------------------------------#----\n",' '); gotoxy(30, start + 12);
+	}																		   
+	else {																	   
+		setcolor(GREEN);													   
+		gotoxy(30, start-1);												   
+		PrintConvertedToSquare("----------$$$$$$---------------$$$$$$-------\n",' '); gotoxy(30, start);
+		PrintConvertedToSquare("---------$$$$$$$$-------------$$$$$$$$------\n",' '); gotoxy(30, start + 1);
+		PrintConvertedToSquare("--------$$$$$$$$$$-----------$$$$$$$$$$-----\n",' '); gotoxy(30, start + 2);
+		PrintConvertedToSquare("---------$$$$$$$$-------------$$$$$$$$------\n",' '); gotoxy(30, start + 3);
+		PrintConvertedToSquare("----------$$$$$$---------------$$$$$$-------\n",' '); gotoxy(30, start + 4);
+		PrintConvertedToSquare("--------#------------------------------#----\n",' '); gotoxy(30, start + 5);
+		PrintConvertedToSquare("--------###-------------------------####----\n",' '); gotoxy(30, start + 6);
+		PrintConvertedToSquare("---------#####------------------######------\n",' '); gotoxy(30, start + 7);
+		PrintConvertedToSquare("----------########----------#########-------\n",' '); gotoxy(30, start + 8);
+		PrintConvertedToSquare("---------- ###########----##########--------\n",' '); gotoxy(30, start + 9);
+		PrintConvertedToSquare("----------- ######################----------\n",' '); gotoxy(30, start + 10);
+		PrintConvertedToSquare("----------------################------------\n",' '); gotoxy(30, start + 11);
+		PrintConvertedToSquare("---------------------######-----------------\n",' '); gotoxy(30, start + 12);
 
 
 	}
@@ -1054,60 +1076,72 @@ void PrintLinkedList(Word* head,int color) {
 }
 void PrintMainMenu() {
 
-	setcolor(WHITE);
-	printf("____________________________________________  \n");
-	printf("||   logs:                                ||  \n");
-	printf("||                                        ||  \n");
-	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
-	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
+	setcolor(GREEN);
+	
+	int n = 44, n2;
+	while (n--) {
+		printf("%c", BIGSQUARE);
+	}
+	printf("\n%c%c   logs:                                %c%c  \n",BIGSQUARE,BIGSQUARE,BIGSQUARE,BIGSQUARE);
+	printf("%c%c                                        %c%c  \n",  BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
 
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||Press CTRL+q to stop music              ||  \n");
-	printf("--------------------------------------------  \n");
+	n = 40;
+	printf("%c%c", BIGSQUARE, BIGSQUARE);
+	while (n--) {
+		printf("%c", LITTLESQUARE);
+	}
+	printf("%c%c\n", BIGSQUARE, BIGSQUARE);
+	
+
+
+	
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+		printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+
+	printf("%c%c Press CTRL+q to stop music             %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	n = 44;
+	while (n--) {
+		printf("%c", BIGSQUARE);
+	}	
 	gotoxy(CurserPos[0], CurserPos[1]);
 
 
 }
 void PrintRegisterMenu() {
 
-	setcolor(WHITE);
-	printf("____________________________________________  \n");
-	printf("||   logs:                                ||  \n");
-	printf("||                                        ||  \n");
-	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
-	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("--------------------------------------------  \n");
+	setcolor(GREEN);
+
+	int n = 44, n2;
+	while (n--) {
+		printf("%c", BIGSQUARE);
+	}
+	printf("\n%c%c   logs:                                %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+	printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+
+	n = 40;
+	printf("%c%c", BIGSQUARE, BIGSQUARE);
+	while (n--) {
+		printf("%c", LITTLESQUARE);
+	}
+	printf("%c%c\n", BIGSQUARE, BIGSQUARE);
+
+	n = 24;
+	while (n--) {
+		printf("%c%c                                        %c%c  \n", BIGSQUARE, BIGSQUARE, BIGSQUARE, BIGSQUARE);
+
+	}
+	n = 44;
+	while (n--) {
+		printf("%c", BIGSQUARE);
+	}
 	gotoxy(CurserPos[0], CurserPos[1]);
 
 
@@ -1225,34 +1259,34 @@ void PrintHistory(int n1, int n2, int n3) {
 
 void PrintGameMenu() {
 	//system("cls");
-	setcolor(WHITE);
+	setcolor(YELLOW);
 	gotoxy(0, 0);
 	
-	printf("____________________________________________________________________________\n");
-	printf("||                          || User:                                      || \n");
-	printf("||                          ||----------------------------------------------\n");
-	printf("||                          || Wave:                                      || \n");
-	printf("||                          ||----------------------------------------------\n");
-	printf("||                          || Score:               |status: "); setcolor(GREEN); printf("NOT PAUSED"); setcolor(WHITE); printf("   || \n");
-	printf("||                          ||----------------------------------------------\n");
-	printf("||                          || logs:                                      ||\n");
-	printf("||                          ||----------------------------------------------  \n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n");
-	printf("||                          ||                                            ||\n"); setcolor(RED);
-	printf("----------------------------------------------------------------------------\n");
-	printf("----------------------------------------------------------------------------\n");
+	PrintConvertedToSquare("____________________________________________________________________________\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          || User:                                      || \n",  LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||----------------------------------------------\n", LITTLESQUARE);
+	PrintConvertedToSquare("||                          || Wave:                                      || \n",  LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||----------------------------------------------\n", LITTLESQUARE);
+	PrintConvertedToSquare("||                          || Score:               |status: ",  LITTLESQUARE); setcolor(GREEN); printf("NOT PAUSED"); setcolor(YELLOW); PrintConvertedToSquare("   || \n", LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||----------------------------------------------\n",  LITTLESQUARE);
+	PrintConvertedToSquare("||                          || logs:                                      ||\n",  LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||----------------------------------------------  \n", LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE);
+	PrintConvertedToSquare("||                          ||                                            ||\n",LITTLESQUARE); setcolor(RED);
+	PrintConvertedToSquare("----------------------------------------------------------------------------\n",LITTLESQUARE);
+	PrintConvertedToSquare("----------------------------------------------------------------------------\n",LITTLESQUARE);
 
 	PrintFace(1);
 
@@ -1284,7 +1318,7 @@ void Pause() {
 	setcolor(WHITE);
 	while (n--) {
 		       
-		printf("||##########################||\n");
+		PrintConvertedToSquare("||##########################||\n",' ');
 	}
 	setcolor(Color);
 	
@@ -1329,8 +1363,7 @@ void PrintChoiceMenu(int space) {
 	printf("||                                                ||Score:           ||--------------------- \n");
 	printf("||                                                ||--------------------------------------|| \n");
 	printf("||Restart Game:                                   ||\n");
-	printf("||                                                ||\n");
-										                      
+	printf("||                                                ||\n");					                      
 	while (space--) {					                      
 	printf("||                                                ||\n");
 	}									                      
@@ -1354,18 +1387,18 @@ void PrintChoiceMenu(int space) {
 void PrintGoBackMenu() {
 
 	setcolor(WHITE);
-	printf("____________________________________________  \n");
-	printf("||   logs:                                ||  \n");
-	printf("||                                        ||  \n");
-	printf("||- - - - - - - - - - - - - - - - - - - - ||  \n");
-	printf("|| - - - - - - - - - - - - - - - - - - - -||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("||                                        ||  \n");
-	printf("--------------------------------------------  \n");
+	PrintConvertedToSquare("____________________________________________  \n",LITTLESQUARE );
+	PrintConvertedToSquare("||   logs:                                ||  \n",LITTLESQUARE);
+	PrintConvertedToSquare("||                                        ||  \n",LITTLESQUARE );
+	PrintConvertedToSquare("||----------------------------------------||  \n",LITTLESQUARE );
+	PrintConvertedToSquare("||----------------------------------------||  \n", LITTLESQUARE);
+	PrintConvertedToSquare("||                                        ||  \n",LITTLESQUARE);
+	PrintConvertedToSquare("||                                        ||  \n",LITTLESQUARE);
+	PrintConvertedToSquare("||                                        ||  \n",LITTLESQUARE);
+	PrintConvertedToSquare("||                                        ||  \n",LITTLESQUARE);
+	PrintConvertedToSquare("||                                        ||  \n",LITTLESQUARE);
+	PrintConvertedToSquare("||                                        ||  \n",LITTLESQUARE);
+	PrintConvertedToSquare("||||||||||||||||||||||||||||||||||||||||||||  \n",LITTLESQUARE);
 	gotoxy(CurserPos[0], CurserPos[1]);
 
 
@@ -1407,7 +1440,11 @@ void MainMenu() {
 	gotoxy(67, 6);
 	setcolor(0);
 	printf("dedicated to my mother");
+	gotoxy(57, 20);
+	setcolor(RED);
+	printf("_____ _ _-__ _-__ ---  _-- --- _-_ _-__ -__");
 	setcolor(Color);
+
 	Busy = 0;
 	
 
@@ -1568,6 +1605,7 @@ void GameMenu() {
 	ClearTerminal();
 	
 	PrintGameMenu();
+	ResetGameMenu();
 	UnClearChangingSizeThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UnClearSizeChange, NULL, 0, NULL);
 	ShowScore();
 	
@@ -1909,18 +1947,27 @@ void CreatNewLinkedList(int ord, int Long, int hard, int Unclear,int HeadHeight,
 	}
 	
 	FILE* fileOrd = fopen(OrdFIleName, "r");
+	if (fileOrd == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < (*(WhereIn[None0_Right1_Left2 * 3 + 0])); i++) {
 		//OrdWords[0] is just for going through the file not that we need it;
 		fgets(Chert, 1000, fileOrd);
 
 	}
 	FILE* fileLong = fopen(LongFIleName, "r");
+	if (fileLong == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < (*(WhereIn[None0_Right1_Left2 * 3 + 1])); i++) {
 		//OrdWords[0] is just for going through the file not that we need it;
 		fgets(Chert, 1000, fileLong);
 	}
 
 	FILE* fileHard = fopen(HardFIleName, "r");
+	if (fileHard == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < (*(WhereIn[None0_Right1_Left2 * 3 + 2])); i++) {
 		//OrdWords[0] is just for going through the file not that we need it;
 		fgets(Chert, 1000, fileHard);
@@ -2132,6 +2179,9 @@ void FillFiles() {
 	}
 	//filling files NoneHand----------------------------------------------------
 	FILE* file = fopen("ord.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	int lenght;
 	char word[26];
 	for (int i = 0; i < 100; i++) {
@@ -2149,6 +2199,9 @@ void FillFiles() {
 	fclose(file);
 	//long-----------------------------------
 	file = fopen("long.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10 + 11;//can take 11 to 20 length
 		//j=3 because we dont want our word to have less than 3 letters;
@@ -2162,6 +2215,9 @@ void FillFiles() {
 	//hard----------------------
 
 	file = fopen("hard.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10 + 11;
 		
@@ -2184,6 +2240,9 @@ void FillFiles() {
 
 	//filling files Right Hand----------------------------------------------------
 	file = fopen("Rightord.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10;
 		if (lenght < 3) {
@@ -2200,6 +2259,9 @@ void FillFiles() {
 	fclose(file);
 	//long-----------------------------------
 	file = fopen("Rightlong.txt" , "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10 + 11;//can take 11 to 20 length
 		
@@ -2214,6 +2276,9 @@ void FillFiles() {
 	//hard----------------------
 
 	file = fopen("Righthard.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10 + 11;
 		
@@ -2238,6 +2303,9 @@ void FillFiles() {
 	//filling files Left Hand----------------------------------------------------
 
 	file = fopen("Leftord.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10;
 		if (lenght < 3) {
@@ -2254,6 +2322,9 @@ void FillFiles() {
 	//long-----------------------------------
 	
 	file = fopen("Leftlong.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10 + 11;//can take 11 to 20 length
 		
@@ -2268,6 +2339,9 @@ void FillFiles() {
 	//hard----------------------
 
 	file = fopen("Lefthard.txt", "w");
+	if (file == NULL) {
+		exit(1);
+	}
 	for (int i = 0; i < 100; i++) {
 		lenght = rand() % 10+ 11;
 	
@@ -2489,11 +2563,11 @@ void NextWord() {
 			ShowScore();
 
 		}
-		GameLog("CORRECT", GREEN);
+		GameLog("CORRECT\a", GREEN);
 
 	}
 	else {
-		GameLog("WRONG", RED);
+		GameLog("WRONG\a", RED);
 
 
 	}
