@@ -1,6 +1,4 @@
-
-//only thing I've done here was turning this code from python to c and the python one was not  mine;
-
+//only thing I ve done here is turning pythin to c
 void sk(int beat) {
 	Sleep(beat / 1000);
 }
